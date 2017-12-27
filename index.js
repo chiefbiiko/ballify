@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+// TODO: print help on demand
+
 var fs = require('fs')
 var path = require('path')
 var http = require('follow-redirects').http
