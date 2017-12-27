@@ -1,6 +1,13 @@
 #!/usr/bin/env node
 
-// TODO: print help on demand
+// TODO:
+//   + check whether links without rel="stylesheet" are actually css
+//   + print help on demand
+//   + test GET
+//   + implement GET against non-"https?" prefixed urls
+//   + implement minifying and gzippin scripts and styles (add as cli args)
+//   + write a test that shows that only empty scripts are considered
+//   + if input is not supplied look for index.html in cwd
 
 var fs = require('fs')
 var path = require('path')
@@ -39,7 +46,7 @@ function httpGet (url, cb) {
   }).on('error', cb)
 }
 
-function httpspGet (url, cb) {
+function httpsGet (url, cb) {
   https.get(url, function (res) {
     var chunks = []
     res.on('data', chunks.push)
@@ -60,8 +67,8 @@ function read (file, cb) {
   else get(file, cb)
 }
 
-function xhref (style) {
-  return style.replace(/^.+href=.([^\s'"]+).+$/, '$1')
+function xhref (link) {
+  return link.replace(/^.+href=.([^\s'"]+).+$/, '$1')
 }
 
 function xsrc (script) {
@@ -74,7 +81,7 @@ function xuri (element) {
   else throw Error('unsupported element')
 }
 
-function isStyle (element) {
+function isLink (element) {
   return element.startsWith('<link')
 }
 
@@ -85,21 +92,23 @@ function maybeAbs (uri) {
 }
 
 function done (out) {
-  fs.writeFileSync(OUTPUT, out)
-  console.log('DONE!\n' + OUTPUT)
+  fs.writeFile(OUTPUT, out, function (err) {
+    if (err) throw err
+    console.log('DONE!\n' + OUTPUT)
+  })
 }
 
 if (!fs.existsSync(INPUT)) return console.error(HELP)
 
 fs.readFile(INPUT, 'utf8', function (err, txt) {
-  var all = txt.match(RegExp(STYLERGX)).concat(txt.match(RegExp(SCRIPTRGX)))
+  var all = txt.match(RegExp(SCRIPTRGX)).concat(txt.match(RegExp(STYLERGX)))
   var pending = all.length
   var out = txt
 
   all.forEach(function (element) {
     read(maybeAbs(xuri(element)), function (err, txt) {
       if (err) throw err
-      out = out.replace(element, isStyle(element) ? pacCSS(txt) : pacJS(txt))
+      out = out.replace(element, isLink(element) ? pacCSS(txt) : pacJS(txt))
       if (!--pending) done(out)
     })
   })
