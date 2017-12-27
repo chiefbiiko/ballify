@@ -8,10 +8,9 @@ var https = require('follow-redirects').https
 var HELP = 'usage: ballify input [output]\n' +
   '  input: html file\n  output: output file name, default: ball.html'
 
-var INPUT = process.argv[2]
-var OUTPUT = process.argv[3] || 'ball.html'
-
-var ROOT = path.dirname(path.join(process.cwd(), INPUT || ''))
+var INPUT = process.argv[2] ? path.join(process.argv[2]) : ''
+var OUTPUT = path.join(process.argv[3] || 'ball.html')
+var ROOT = path.dirname(path.join(process.cwd(), INPUT))
 
 var SCRIPTRGX = '<script[^>]+src=(?:"|\').+(?:"|\')[^>]*>\s*<\/script>'
 var STYLERGX =
@@ -68,7 +67,6 @@ function xsrc (script) {
 }
 
 function xuri (element) {
-  console.log(element)
   if (element.startsWith('<link')) return xhref(element)
   else if (element.startsWith('<script')) return xsrc(element)
   else throw Error('unsupported element')
@@ -84,20 +82,23 @@ function maybeAbs (uri) {
   else return uri
 }
 
+function done (out) {
+  fs.writeFileSync(OUTPUT, out)
+  console.log('DONE!\n' + OUTPUT)
+}
+
 if (!fs.existsSync(INPUT)) return console.error(HELP)
 
 fs.readFile(INPUT, 'utf8', function (err, txt) {
-  var styles = txt.match(RegExp(STYLERGX))
-  var scripts = txt.match(RegExp(SCRIPTRGX))
-  var pending = styles.length + scripts.length
+  var all = txt.match(RegExp(STYLERGX)).concat(txt.match(RegExp(SCRIPTRGX)))
+  var pending = all.length
   var out = txt
 
-  scripts.concat(styles).forEach(function (element) {
+  all.forEach(function (element) {
     read(maybeAbs(xuri(element)), function (err, txt) {
       if (err) throw err
-      var pac = isStyle(element) ? pacCSS(txt) : pacJS(txt)
-      out = out.replace(element, pac)
-      if (!--pending) console.log('DONE!\n' + out)
+      out = out.replace(element, isStyle(element) ? pacCSS(txt) : pacJS(txt))
+      if (!--pending) done(out)
     })
   })
 
