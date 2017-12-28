@@ -1,0 +1,26 @@
+{
+  "name": "crunchify-css",
+  "version": "0.0.0",
+  "description": "strips whitespace from css and does minimal collapsing",
+  "main": "index.js",
+  "scripts": {
+    "test": "tape test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/chiefbiiko/crunchify-css.git"
+  },
+  "keywords": [
+    "css",
+    "minify"
+  ],
+  "author": "Noah Anabiik Schwarz",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/chiefbiiko/crunchify-css/issues"
+  },
+  "homepage": "https://github.com/chiefbiiko/crunchify-css#readme",
+  "devDependencies": {
+    "tape": "^4.8.0"
+  }
+}
