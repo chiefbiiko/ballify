@@ -17,9 +17,7 @@ tape('collapses where posssible', function (t) {
 
   var crunch = crunchify(CSS)
 
-  console.log(crunch)
-
-  t.is(crunch.match(/body/).length, 1, 'only one body selector should be left')
+  t.is(crunch.match(/body/g).length, 1, 'only one "body" should be left')
 
   t.end()
 })
