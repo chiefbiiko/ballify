@@ -5,7 +5,7 @@
 //   + ~print help on demand~
 //   + ~test GET~
 //   + separate api and cli
-//   + implement GET against non-"https?" prefixed urls
+//   + ~implement GET against non-"https?" prefixed urls~
 //   + ballify images: to base64?
 //   + implement minifying scripts and styles and gzippin (add as cli args)
 //   + ~write a test that shows that only empty scripts are considered~
@@ -59,8 +59,7 @@ function httpsGet (url, cb) {
 }
 
 function get (url, cb) {
-  if (url.startsWith('https')) httpsGet(url, cb)
-  else if (url.startsWith('http')) httpGet(url, cb)
+  url.startsWith('https') ? httpsGet(url, cb) : httpGet(url, cb)
 }
 
 function read (file, cb) {
