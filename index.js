@@ -26,6 +26,8 @@ var LINKRGX =
   '(?:<link[^>]+href=(?:"|\').+(?:"|\')[^>]+' +
   'rel=(?:"|\')stylesheet(?:"|\')[^>]*>)'
 
+function noop () {}
+
 function pacCSS (css) {
   return '<style>' + css + '</style>'
 }
@@ -94,9 +96,15 @@ function maybeAbs (uri, root) {
 // opts: --crunch-css=true, --merge-css=true, --uglify-js=true,
 //   --crunch-html=false, --gzip-ball=false
 function ballify (input, opts, callback) {
+  if (typeof opts === 'function') {
+    callback = opts
+    opts = {}
+  }
+
+  if (!opts) opts = {}
+  if (!callback) callback = noop
 
   input = path.join(input || 'index.html')
-  opts = opts || {}
 
   var root = path.dirname(path.join(__dirname, input))
 
