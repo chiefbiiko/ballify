@@ -4,7 +4,7 @@ var path = require('path')
 var child = require('child_process')
 
 tape.onFinish(function () {
-//fs.unlinkSync('./ball.html')
+fs.unlinkSync('./ball.html')
   fs.unlinkSync('./testfiles/bundle.html')
 })
 
@@ -31,16 +31,31 @@ tape('ball name can be set', function (t) {
 
 tape('getting a url', function (t) {
 
-  var og = fs.readFileSync('./testfiles/dup_index.html', 'utf8')
+  var og = fs.readFileSync('./testfiles/index2.html', 'utf8')
 
   t.ok(/<script.*><\/script>/.test(og), 'empty script')
 
-  child.execSync('node index ./testfiles/dup_index.html')
+  child.execSync('node index ./testfiles/index2.html')
 
   var ball = fs.readFileSync('./ball.html', 'utf8')
 
-  t.ok(/<script.*>.+<\/script>/.test(ball), 'full script')
+  t.ok(/<script.*>[^<]+<\/script>/.test(ball), 'full script')
   t.ok(ball.length > 1000, 'rily there')
+
+  t.end()
+})
+
+tape('only empty scripts are replaced', function (t) {
+
+  var og = fs.readFileSync('./testfiles/index3.html', 'utf8')
+
+  t.ok(/<script.*>1\+1<\/script>/.test(og), 'dumb script there')
+
+  child.execSync('node index ./testfiles/index3.html')
+
+  var ball = fs.readFileSync('./ball.html', 'utf8')
+
+  t.ok(/<script.*>1\+1<\/script>/.test(ball), 'dumb script there still')
 
   t.end()
 })

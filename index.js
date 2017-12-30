@@ -2,12 +2,13 @@
 
 // TODO:
 //   + ~check whether links without rel="stylesheet" are actually css~
-//   + print help on demand
+//   + ~print help on demand~
 //   + ~test GET~
 //   + implement GET against non-"https?" prefixed urls
 //   + implement minifying and gzippin scripts and styles (add as cli args)
-//   + write a test that shows that only empty scripts are considered
-//   + if input is not supplied look for index.html in cwd
+//   + ~write a test that shows that only empty scripts are considered~
+//   + ~if input is not supplied look for index.html in cwd~
+//   + separate api and cli
 
 var fs = require('fs')
 var path = require('path')
@@ -17,7 +18,7 @@ var https = require('follow-redirects').https
 var HELP = 'usage: ballify input [output]\n' +
   '  input: html file\n  output: output file name, default: ball.html'
 
-var INPUT = process.argv[2] ? path.join(process.argv[2]) : ''
+var INPUT = path.join(process.argv[2] || 'index.html')
 var OUTPUT = path.join(process.argv[3] || 'ball.html')
 var ROOT = path.dirname(path.join(process.cwd(), INPUT))
 
@@ -27,6 +28,10 @@ var STYLERGX =
   'href=(?:"|\').+(?:"|\')[^>]*>)|' +
   '(?:<link[^>]+href=(?:"|\').+(?:"|\')[^>]+' +
   'rel=(?:"|\')stylesheet(?:"|\')[^>]*>)'
+
+var wantsHelp = process.argv.slice(2).some(function (arg) {
+  return /-h(elp)?/i.test(arg)
+})
 
 function thrower (err) {
   if (err) throw err
@@ -105,6 +110,8 @@ function done (out) {
     console.log('DONE!\n' + OUTPUT)
   })
 }
+
+if (wantsHelp) return console.log(HELP)
 
 fs.readFile(INPUT, 'utf8', function (err, txt) {
   var all = txt.match(RegExp(SCRIPTRGX)).concat(txt.match(RegExp(STYLERGX)))
