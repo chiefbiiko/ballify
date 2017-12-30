@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
 // TODO:
-//   + check whether links without rel="stylesheet" are actually css
+//   + ~check whether links without rel="stylesheet" are actually css~
 //   + print help on demand
-//   + test GET
+//   + ~test GET~
 //   + implement GET against non-"https?" prefixed urls
 //   + implement minifying and gzippin scripts and styles (add as cli args)
 //   + write a test that shows that only empty scripts are considered
@@ -28,6 +28,10 @@ var STYLERGX =
   '(?:<link[^>]+href=(?:"|\').+(?:"|\')[^>]+' +
   'rel=(?:"|\')stylesheet(?:"|\')[^>]*>)'
 
+function thrower (err) {
+  if (err) throw err
+}
+
 function pacCSS (css) {
   return '<style>' + css + '</style>'
 }
@@ -39,32 +43,36 @@ function pacJS (js) {
 function httpGet (url, cb) {
   http.get(url, function (res) {
     var chunks = []
-    res.on('data', chunks.push)
+    res.on('data', function (chunk) {
+      chunks.push(chunk)
+    })
     res.on('end', function () {
       cb(null, chunks.map(String).join(''))
     })
-  }).on('error', cb)
+  }).on('error', thrower)
 }
 
 function httpsGet (url, cb) {
   https.get(url, function (res) {
     var chunks = []
-    res.on('data', chunks.push)
+    res.on('data', function (chunk) {
+      chunks.push(chunk)
+    })
     res.on('end', function () {
       cb(null, chunks.map(String).join(''))
     })
-  }).on('error', cb)
+  }).on('error', thrower)
 }
 
 function get (url, cb) {
   if (url.startsWith('https')) httpsGet(url, cb)
   else if (url.startsWith('http')) httpGet(url, cb)
-  else cb(Error('unsupported resource'))
 }
 
 function read (file, cb) {
   if (fs.existsSync(file)) fs.readFile(file, 'utf8', cb)
-  else get(file, cb)
+  else if (file.startsWith('http')) get(file, cb)
+  else cb(Error('unsupported resource'))
 }
 
 function xhref (link) {
@@ -97,8 +105,6 @@ function done (out) {
     console.log('DONE!\n' + OUTPUT)
   })
 }
-
-if (!fs.existsSync(INPUT)) return console.error(HELP)
 
 fs.readFile(INPUT, 'utf8', function (err, txt) {
   var all = txt.match(RegExp(SCRIPTRGX)).concat(txt.match(RegExp(STYLERGX)))
