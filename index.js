@@ -36,6 +36,18 @@ function pacJS (js) {
   return '<script>' + js + '</script>'
 }
 
+function getIt(mod, url, cb) {
+  mod.get(url, function (res) {
+    var chunks = []
+    res.on('data', function (chunk) {
+      chunks.push(chunk)
+    })
+    res.on('end', function () {
+      cb(null, chunks.map(String).join(''))
+    })
+  }).on('error', cb)
+}
+
 function httpGet (url, cb) {
   http.get(url, function (res) {
     var chunks = []
@@ -61,7 +73,7 @@ function httpsGet (url, cb) {
 }
 
 function get (url, cb) {
-  url.startsWith('https') ? httpsGet(url, cb) : httpGet(url, cb)
+  url.startsWith('https') ? getIt(https, url, cb) : getIt(http, url, cb)
 }
 
 function read (file, cb) {
