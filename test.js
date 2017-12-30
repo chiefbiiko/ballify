@@ -3,26 +3,33 @@ var fs = require('fs')
 var path = require('path')
 var child = require('child_process')
 
-tape.onFinish(function () {
-fs.unlinkSync('./ball.html')
-  fs.unlinkSync('./testfiles/bundle.html')
-})
+var ballify = require('.')
+
+// tape.onFinish(function () {
+// fs.unlinkSync('./ball.html')
+//   fs.unlinkSync('./testfiles/bundle.html')
+// })
 
 tape('ball should not contain any more external references', function (t) {
 
-  child.execSync('node index ./testfiles/index.html')
+  // child.execSync('node index ./testfiles/index.html')
+  //
+  // var ball = fs.readFileSync('./ball.html', 'utf8')
 
-  var ball = fs.readFileSync('./ball.html', 'utf8')
+  ballify('./testfiles/index.html', {}, function (err, ball) {
+    if (err) t.end(err)
 
-  t.notOk(/rel="stylesheet"/i.test(ball), 'no more style links')
-  t.notOk(/<script\s+src=".+">/i.test(ball), 'no more external js')
+    t.notOk(/rel="stylesheet"/i.test(ball), 'no more style links')
+    t.notOk(/<script\s+src=".+">/i.test(ball), 'no more external js')
 
-  t.end()
+    t.end()
+  })
+
 })
 
-tape('ball name can be set', function (t) {
+tape('ball name can be set from cli', function (t) {
 
-  child.execSync('node index ./testfiles/index.html ./testfiles/bundle.html')
+  child.execSync('node cli ./testfiles/index.html ./testfiles/bundle.html')
 
   t.ok(fs.existsSync('./testfiles/bundle.html'), 'file should exist')
 
@@ -35,14 +42,17 @@ tape('getting a url', function (t) {
 
   t.ok(/<script.*><\/script>/.test(og), 'empty script')
 
-  child.execSync('node index ./testfiles/index2.html')
+  // child.execSync('node index ./testfiles/index2.html')
 
-  var ball = fs.readFileSync('./ball.html', 'utf8')
+  ballify('./testfiles/index2.html', {}, function (err, ball) {
 
-  t.ok(/<script.*>[^<]+<\/script>/.test(ball), 'full script')
-  t.ok(ball.length > 1000, 'rily there')
+    t.ok(/<script.*>[^<]+<\/script>/.test(ball), 'full script')
+    t.ok(ball.length > 1000, 'rily there')
 
-  t.end()
+    t.end()
+  })
+
+  // var ball = fs.readFileSync('./ball.html', 'utf8')
 })
 
 tape('only empty scripts are replaced', function (t) {
@@ -51,11 +61,15 @@ tape('only empty scripts are replaced', function (t) {
 
   t.ok(/<script.*>1\+1<\/script>/.test(og), 'dumb script there')
 
-  child.execSync('node index ./testfiles/index3.html')
+  // child.execSync('node index ./testfiles/index3.html')
 
-  var ball = fs.readFileSync('./ball.html', 'utf8')
+  ballify('./testfiles/index3.html', {}, function (err, ball) {
 
-  t.ok(/<script.*>1\+1<\/script>/.test(ball), 'dumb script there still')
+    t.ok(/<script.*>1\+1<\/script>/.test(ball), 'dumb script there still')
 
-  t.end()
+    t.end()
+  })
+
+  // var ball = fs.readFileSync('./ball.html', 'utf8')
+
 })

@@ -17,14 +17,27 @@ var path = require('path')
 var http = require('follow-redirects').http
 var https = require('follow-redirects').https
 
-// var ROOT = path.dirname(path.join(process.cwd(), INPUT))
+var HELP = 'usage: ballify input [output]\n' +
+  '  input: html file\n  output: output file name, default: ball.html'
+
+var INPUT = path.join(process.argv[2] || 'index.html')
+var OUTPUT = path.join(process.argv[3] || 'ball.html')
+var ROOT = path.dirname(path.join(process.cwd(), INPUT))
 
 var SCRIPTRGX = '<script[^>]+src=(?:"|\').+(?:"|\')[^>]*>\s*<\/script>'
-var LINKRGX =
+var STYLERGX =
   '(?:<link[^>]+rel=(?:"|\')stylesheet(?:"|\')[^>]+' +
   'href=(?:"|\').+(?:"|\')[^>]*>)|' +
   '(?:<link[^>]+href=(?:"|\').+(?:"|\')[^>]+' +
   'rel=(?:"|\')stylesheet(?:"|\')[^>]*>)'
+
+var WANTS_HELP = process.argv.slice(2).some(function (arg) {
+  return /-h(elp)?/i.test(arg)
+})
+
+function thrower (err) {
+  if (err) throw err
+}
 
 function pacCSS (css) {
   return '<style>' + css + '</style>'
@@ -43,7 +56,7 @@ function httpGet (url, cb) {
     res.on('end', function () {
       cb(null, chunks.map(String).join(''))
     })
-  }).on('error', cb)
+  }).on('error', thrower)
 }
 
 function httpsGet (url, cb) {
@@ -55,7 +68,7 @@ function httpsGet (url, cb) {
     res.on('end', function () {
       cb(null, chunks.map(String).join(''))
     })
-  }).on('error', cb)
+  }).on('error', thrower)
 }
 
 function get (url, cb) {
@@ -80,46 +93,41 @@ function xsrc (script) {
 function xuri (element) {
   if (element.startsWith('<link')) return xhref(element)
   else if (element.startsWith('<script')) return xsrc(element)
+  else throw Error('unsupported element')
 }
 
 function isLink (element) {
   return element.startsWith('<link')
 }
 
-function maybeAbs (uri, root) {
+function maybeAbs (uri) {
   if (uri.startsWith('http')) return uri
-  else if (!path.isAbsolute(uri)) return path.join(root, uri)
+  else if (!path.isAbsolute(uri)) return path.join(ROOT, uri)
   else return uri
 }
 
-// opts: --crunch-css=true, --merge-css=true, --uglify-js=true,
-//   --crunch-html=false, --gzip-ball=false
-function ballify (input, opts, callback) {
-
-  input = path.join(input || 'index.html')
-  opts = opts || {}
-
-  var root = path.dirname(path.join(__dirname, input))
-
-  fs.readFile(input, 'utf8', function (err, txt) {
-    if (err) callback(err)
-
-    var all = txt.match(RegExp(SCRIPTRGX)).concat(txt.match(RegExp(LINKRGX)))
-    var pending = all.length
-    var out = txt
-
-    all.forEach(function (element) {
-      read(maybeAbs(xuri(element), root), function (err, txt) {
-        if (err) callback(err)
-
-        out = out.replace(element, isLink(element) ? pacCSS(txt) : pacJS(txt))
-
-        if (!--pending) callback(null, out)
-      })
-    })
-
+function done (out) {
+  fs.writeFile(OUTPUT, out, function (err) {
+    if (err) throw err
+    console.log('DONE!\n' + OUTPUT)
   })
-
 }
 
-module.exports = ballify
+if (WANTS_HELP) return console.log(HELP)
+
+fs.readFile(INPUT, 'utf8', function (err, txt) {
+  if (err) throw err
+
+  var all = txt.match(RegExp(SCRIPTRGX)).concat(txt.match(RegExp(STYLERGX)))
+  var pending = all.length
+  var out = txt
+
+  all.forEach(function (element) {
+    read(maybeAbs(xuri(element)), function (err, txt) {
+      if (err) throw err
+      out = out.replace(element, isLink(element) ? pacCSS(txt) : pacJS(txt))
+      if (!--pending) done(out)
+    })
+  })
+
+})
