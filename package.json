@@ -23,6 +23,7 @@
   "homepage": "https://github.com/chiefbiiko/ballify#readme",
   "dependencies": {
     "follow-redirects": "^1.2.6",
+    "get-pixels": "^3.3.0",
     "tape": "^4.8.0"
   }
 }

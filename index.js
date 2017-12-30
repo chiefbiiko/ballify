@@ -1,23 +1,19 @@
-#!/usr/bin/env node
-
 // TODO:
 //   + ~check whether links without rel="stylesheet" are actually css~
 //   + ~print help on demand~
 //   + ~test GET~
 //   + separate api and cli
-//   + ~implement GET against non-"https?" prefixed urls~
+//   + ^implement GET against non-"https?" prefixed urls + test!
 //   + ballify images: to base64?
 //   + implement minifying scripts and styles and gzippin (add as cli args)
 //   + ~write a test that shows that only empty scripts are considered~
 //   + ~if input is not supplied look for index.html in cwd~
 
-
 var fs = require('fs')
 var path = require('path')
 var http = require('follow-redirects').http
 var https = require('follow-redirects').https
-
-// var ROOT = path.dirname(path.join(process.cwd(), INPUT))
+var getPixels = require('get-pixels')
 
 var SCRIPTRGX = '<script[^>]+src=(?:"|\').+(?:"|\')[^>]*>\s*<\/script>'
 var LINKRGX =
@@ -36,6 +32,15 @@ function pacJS (js) {
   return '<script>' + js + '</script>'
 }
 
+function image2base64 (file, opts, cb) {
+  getPixels(file, opts.mime, function (err, pix) {
+    if (err) return cb(err)
+    var src = 'data:image/*;base64,' + Buffer.from(pix.data).toString('base64')
+    var img = '<img src="' + src + '" alt="base64-img">'
+    cb(null, img)
+  })
+}
+
 function getIt(mod, url, cb) {
   mod.get(url, function (res) {
     var chunks = []
@@ -43,31 +48,7 @@ function getIt(mod, url, cb) {
       chunks.push(chunk)
     })
     res.on('end', function () {
-      cb(null, chunks.map(String).join(''))
-    })
-  }).on('error', cb)
-}
-
-function httpGet (url, cb) {
-  http.get(url, function (res) {
-    var chunks = []
-    res.on('data', function (chunk) {
-      chunks.push(chunk)
-    })
-    res.on('end', function () {
-      cb(null, chunks.map(String).join(''))
-    })
-  }).on('error', cb)
-}
-
-function httpsGet (url, cb) {
-  https.get(url, function (res) {
-    var chunks = []
-    res.on('data', function (chunk) {
-      chunks.push(chunk)
-    })
-    res.on('end', function () {
-      cb(null, chunks.map(String).join(''))
+      cb(null, Buffer.concat(chunks))
     })
   }).on('error', cb)
 }
@@ -77,9 +58,7 @@ function get (url, cb) {
 }
 
 function read (file, cb) {
-  if (fs.existsSync(file)) fs.readFile(file, 'utf8', cb)
-  else if (file.startsWith('http')) get(file, cb)
-  else cb(Error('unsupported resource'))
+  fs.existsSync(file) ? fs.readFile(file, cb) : get(file, cb)
 }
 
 function xhref (link) {
@@ -100,14 +79,15 @@ function isLink (element) {
 }
 
 function maybeAbs (uri, root) {
-  if (uri.startsWith('http')) return uri
-  else if (!path.isAbsolute(uri)) return path.join(root, uri)
+  if (uri.startsWith('http') || path.isAbsolute(uri)) return uri
+  else if (!path.isAbsolute(uri)/*not url*/) return path.join(root, uri)
   else return uri
 }
 
-// opts: --crunch-css=true, --merge-css=true, --uglify-js=true,
-//   --crunch-html=false, --gzip-ball=false
+// opts: crunch-css=true, merge-css=true, uglify-js=true, img-base64=false,
+//   crunch-html=false, gzip-ball=false
 function ballify (input, opts, callback) {
+
   if (typeof opts === 'function') {
     callback = opts
     opts = {}
@@ -117,7 +97,6 @@ function ballify (input, opts, callback) {
   if (!callback) callback = noop
 
   input = path.join(input || 'index.html')
-
   var root = path.dirname(path.join(__dirname, input))
 
   fs.readFile(input, 'utf8', function (err, txt) {
@@ -128,11 +107,10 @@ function ballify (input, opts, callback) {
     var out = txt
 
     all.forEach(function (element) {
-      read(maybeAbs(xuri(element), root), function (err, txt) {
+      read(maybeAbs(xuri(element), root), function (err, buf) {
         if (err) callback(err)
-
+        var txt = buf.toString()
         out = out.replace(element, isLink(element) ? pacCSS(txt) : pacJS(txt))
-
         if (!--pending) callback(null, out)
       })
     })
