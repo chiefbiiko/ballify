@@ -24,6 +24,7 @@
   "dependencies": {
     "follow-redirects": "^1.2.6",
     "get-pixels": "^3.3.0",
-    "tape": "^4.8.0"
+    "tape": "^4.8.0",
+    "valid-url": "^1.0.9"
   }
 }

@@ -24,6 +24,7 @@ tape('ball name can be set from cli', function (t) {
 
   t.ok(fs.existsSync('./testfiles/bundle.html'), 'file should exist')
 
+  fs.unlinkSync('./testfiles/bundle.html')
   t.end()
 })
 
@@ -54,6 +55,18 @@ tape('only empty scripts are replaced', function (t) {
     if (err) t.end(err)
 
     t.ok(/<script.*>1\+1<\/script>/.test(ball), 'dumb script there still')
+
+    t.end()
+  })
+
+})
+
+tape('non "https?"-prefixed urls', function (t) {
+
+  ballify('testfiles/index4.html', function (err, ball) {
+    if (err) t.end(err)
+
+    t.ok(/<script[^>]*>.+<\/script>/.test(ball), 'full script')
 
     t.end()
   })

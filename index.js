@@ -3,7 +3,7 @@
 //   + ~print help on demand~
 //   + ~test GET~
 //   + separate api and cli
-//   + ^implement GET against non-"https?" prefixed urls + test!
+//   + ~implement GET against non-"https?" prefixed urls + test!~
 //   + ballify images: to base64?
 //   + implement minifying scripts and styles and gzippin (add as cli args)
 //   + ~write a test that shows that only empty scripts are considered~
@@ -13,15 +13,17 @@ var fs = require('fs')
 var path = require('path')
 var http = require('follow-redirects').http
 var https = require('follow-redirects').https
+var valid = require('valid-url')
 var getPixels = require('get-pixels')
 
-var SCRIPTRGX = '<script[^>]+src=(?:"|\').+(?:"|\')[^>]*>\s*<\/script>'
-var LINKRGX =
+var SCRIPTRGX = RegExp('<script[^>]+src=(?:"|\').+(?:"|\')[^>]*>\s*<\/script>')
+var LINKRGX = RegExp(
   '(?:<link[^>]+rel=(?:"|\')stylesheet(?:"|\')[^>]+' +
   'href=(?:"|\').+(?:"|\')[^>]*>)|' +
   '(?:<link[^>]+href=(?:"|\').+(?:"|\')[^>]+' +
   'rel=(?:"|\')stylesheet(?:"|\')[^>]*>)'
-var IMGRGX = '<img[^>]+src=(?:"|\').+(?:"|\')[^>]*>'
+)
+var IMGRGX = RegExp('<img[^>]+src=(?:"|\').+(?:"|\')[^>]*>')
 
 function noop () {}
 
@@ -81,7 +83,7 @@ function isLink (element) {
 
 function maybeAbs (uri, root) {
   if (uri.startsWith('http') || path.isAbsolute(uri)) return uri
-  else if (!path.isAbsolute(uri)/*not url*/) return path.join(root, uri)
+  else if (!valid.isUri(uri) && uri.length < 36) return path.join(root, uri)
   else return uri
 }
 
@@ -103,7 +105,7 @@ function ballify (input, opts, callback) {
   fs.readFile(input, 'utf8', function (err, txt) {
     if (err) callback(err)
 
-    var all = txt.match(RegExp(SCRIPTRGX)).concat(txt.match(RegExp(LINKRGX)))
+    var all = txt.match(SCRIPTRGX).concat(txt.match(LINKRGX))
     var pending = all.length
     var out = txt
 
