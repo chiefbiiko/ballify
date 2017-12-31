@@ -43,7 +43,7 @@ function image2base64 (file, opts, cb) {
 }
 
 function getIt(mod, url, cb) {
-  mod.get(url, function (res) {
+  mod.get(url.startsWith('http') ? url : 'http://' + url, function (res) {
     var chunks = []
     res.on('data', function (chunk) {
       chunks.push(chunk)
