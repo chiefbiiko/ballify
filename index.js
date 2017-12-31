@@ -72,19 +72,23 @@ function xsrc (script) {
   return script.replace(/^.+src=.([^\s'"]+).+$/, '$1')
 }
 
-function xuri (element) {
+function xurl (element) {
   if (element.startsWith('<link')) return xhref(element)
-  else if (element.startsWith('<script')) return xsrc(element)
+  else if (/^(<script|<img)/.test(element)) return xsrc(element)
+}
+
+function isImg (element) {
+  return element.startsWith('<img')
 }
 
 function isLink (element) {
   return element.startsWith('<link')
 }
 
-function maybeAbs (uri, root) {
-  if (uri.startsWith('http') || path.isAbsolute(uri)) return uri
-  else if (!valid.isUri(uri) && uri.length < 36) return path.join(root, uri)
-  else return uri
+function maybeAbs (url, root) {
+  if (url.startsWith('http') || path.isAbsolute(url)) return url
+  else if (!valid.isUri(url) && url.length < 36) return path.join(root, url)
+  else return url
 }
 
 // opts: crunch-css=true, merge-css=true, uglify-js=true, img-base64=false,
@@ -110,7 +114,7 @@ function ballify (input, opts, callback) {
     var out = txt
 
     all.forEach(function (element) {
-      read(maybeAbs(xuri(element), root), function (err, buf) {
+      read(maybeAbs(xurl(element), root), function (err, buf) {
         if (err) callback(err)
         out = out.replace(element, isLink(element) ? pacCSS(buf) : pacJS(buf))
         if (!--pending) callback(null, out)
