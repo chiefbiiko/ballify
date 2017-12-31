@@ -7,7 +7,7 @@ var ballify = require('.')
 
 tape('ball should not contain any more external references', function (t) {
 
-  ballify('./testfiles/index.html', {}, function (err, ball) {
+  ballify('./testfiles/index.html', function (err, ball) {
     if (err) t.end(err)
 
     t.notOk(/rel="stylesheet"/i.test(ball), 'no more style links')
@@ -34,7 +34,7 @@ tape('getting a url', function (t) {
 
   t.ok(/<script.*><\/script>/.test(og), 'empty script')
 
-  ballify('./testfiles/index2.html', {}, function (err, ball) {
+  ballify('./testfiles/index2.html', function (err, ball) {
     if (err) t.end(err)
 
     t.ok(/<script.*>[^<]+<\/script>/.test(ball), 'full script')
@@ -51,7 +51,7 @@ tape('only empty scripts are replaced', function (t) {
 
   t.ok(/<script.*>1\+1<\/script>/.test(og), 'dumb script there')
 
-  ballify('./testfiles/index3.html', {}, function (err, ball) {
+  ballify('./testfiles/index3.html', function (err, ball) {
     if (err) t.end(err)
 
     t.ok(/<script.*>1\+1<\/script>/.test(ball), 'dumb script there still')
@@ -67,6 +67,18 @@ tape('non "https?"-prefixed urls', function (t) {
     if (err) t.end(err)
 
     t.ok(/<script[^>]*>.+<\/script>/.test(ball), 'full script')
+
+    t.end()
+  })
+
+})
+
+tape('replacing img in html', function (t) {
+
+  ballify('testfiles/index5.html', function (err, ball) {
+    if (err) t.end(err)
+
+    t.ok(/<img src="data.+"/.test(ball), 'img data uri present')
 
     t.end()
   })

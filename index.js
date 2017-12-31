@@ -4,7 +4,7 @@
 //   + ~test GET~
 //   + separate api and cli
 //   + ~implement GET against non-"https?" prefixed urls + test!~
-//   + ballify images: to base64?
+//   + ballify images: to base64? - ALSO WITHIN js !!!
 //   + implement minifying scripts and styles and gzippin (add as cli args)
 //   + ~write a test that shows that only empty scripts are considered~
 //   + ~if input is not supplied look for index.html in cwd~
@@ -14,7 +14,6 @@ var path = require('path')
 var http = require('follow-redirects').http
 var https = require('follow-redirects').https
 var valid = require('valid-url')
-var getPixels = require('get-pixels')
 
 var SCRIPTRGX = RegExp('<script[^>]+src=(?:"|\').+(?:"|\')[^>]*>\s*<\/script>')
 var LINKRGX = RegExp(
@@ -27,21 +26,17 @@ var IMGRGX = RegExp('<img[^>]+src=(?:"|\').+(?:"|\')[^>]*>')
 
 function noop () {}
 
-function pacCSS (css) {
-  return '<style>' + css + '</style>'
+function pacCSS (css, cb) {
+  cb(null, '<style>' + css + '</style>')
 }
 
-function pacJS (js) {
-  return '<script>' + js + '</script>'
+function pacJS (js, cb) {
+  cb(null, '<script>' + js + '</script>')
 }
 
-function image2base64 (file, opts, cb) {
-  getPixels(file, opts.mime, function (err, pix) {
-    if (err) return cb(err)
-    var src = 'data:image/*;base64,' + Buffer.from(pix.data).toString('base64')
-    var img = '<img src="' + src + '" alt="base64-image">'
-    cb(null, img)
-  })
+function imgBuf2base64 (buf, cb) { //opts,
+  var src = 'data:image/*;base64,' + Buffer.from(buf).toString('base64')
+  cb(null, '<img src="' + src + '" alt="base64-image">')
 }
 
 function getIt(mod, url, cb) {
@@ -81,6 +76,10 @@ function isImg (element) {
   return element.startsWith('<img')
 }
 
+function isScript (element) {
+  return element.startsWith('<script')
+}
+
 function isLink (element) {
   return element.startsWith('<link')
 }
@@ -109,15 +108,27 @@ function ballify (input, opts, callback) {
   fs.readFile(input, 'utf8', function (err, txt) {
     if (err) callback(err)
 
-    var all = txt.match(SCRIPTRGX).concat(txt.match(LINKRGX))
+    var all = (txt.match(SCRIPTRGX) || [])
+      .concat(txt.match(LINKRGX) || [])
+      .concat(txt.match(IMGRGX) || [])
     var pending = all.length
     var out = txt
+
+    function done (element, err, pac) {
+      if (err) callback(err)
+      out = out.replace(element, pac)
+      if (!--pending) callback(null, out)
+    }
 
     all.forEach(function (element) {
       read(maybeAbs(xurl(element), root), function (err, buf) {
         if (err) callback(err)
-        out = out.replace(element, isLink(element) ? pacCSS(buf) : pacJS(buf))
-        if (!--pending) callback(null, out)
+        if (isLink(element))
+          pacCSS(buf, done.bind(null, element))
+        else if (isScript(element))
+          pacJS(buf, done.bind(null, element))
+        else if (isImg(element))
+          imgBuf2base64(buf, done.bind(null, element))
       })
     })
 
