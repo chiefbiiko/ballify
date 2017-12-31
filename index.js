@@ -21,6 +21,7 @@ var LINKRGX =
   'href=(?:"|\').+(?:"|\')[^>]*>)|' +
   '(?:<link[^>]+href=(?:"|\').+(?:"|\')[^>]+' +
   'rel=(?:"|\')stylesheet(?:"|\')[^>]*>)'
+var IMGRGX = '<img[^>]+src=(?:"|\').+(?:"|\')[^>]*>'
 
 function noop () {}
 
@@ -36,7 +37,7 @@ function image2base64 (file, opts, cb) {
   getPixels(file, opts.mime, function (err, pix) {
     if (err) return cb(err)
     var src = 'data:image/*;base64,' + Buffer.from(pix.data).toString('base64')
-    var img = '<img src="' + src + '" alt="base64-img">'
+    var img = '<img src="' + src + '" alt="base64-image">'
     cb(null, img)
   })
 }
@@ -109,8 +110,7 @@ function ballify (input, opts, callback) {
     all.forEach(function (element) {
       read(maybeAbs(xuri(element), root), function (err, buf) {
         if (err) callback(err)
-        var txt = buf.toString()
-        out = out.replace(element, isLink(element) ? pacCSS(txt) : pacJS(txt))
+        out = out.replace(element, isLink(element) ? pacCSS(buf) : pacJS(buf))
         if (!--pending) callback(null, out)
       })
     })
