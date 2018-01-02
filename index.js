@@ -34,8 +34,8 @@ function pacJS (js, cb) {
   cb(null, '<script>' + js + '</script>')
 }
 
-function imgBuf2base64 (buf, cb) { //opts,
-  var src = 'data:image/*;base64,' + Buffer.from(buf).toString('base64')
+function imgBuf2base64 (buf, cb) {
+  var src = 'data:image/*;base64,' + buf.toString('base64')
   cb(null, '<img src="' + src + '" alt="base64-image">')
 }
 
@@ -68,8 +68,8 @@ function xsrc (script) {
 }
 
 function xurl (element) {
-  if (element.startsWith('<link')) return xhref(element)
-  else if (/^(<script|<img)/.test(element)) return xsrc(element)
+  if (isLink(element)) return xhref(element)
+  else if (isImg(element) || isScript(element)) return xsrc(element)
 }
 
 function isImg (element) {
@@ -84,7 +84,7 @@ function isLink (element) {
   return element.startsWith('<link')
 }
 
-function maybeAbs (url, root) {
+function maybeAbs (url, root) { // magic 36 to make sure its not a url
   if (url.startsWith('http') || path.isAbsolute(url)) return url
   else if (!valid.isUri(url) && url.length < 36) return path.join(root, url)
   else return url
@@ -106,29 +106,27 @@ function ballify (input, opts, callback) {
   var root = path.dirname(path.join(__dirname, input))
 
   fs.readFile(input, 'utf8', function (err, txt) {
-    if (err) callback(err)
+    if (err) return callback(err)
 
     var all = (txt.match(SCRIPTRGX) || [])
       .concat(txt.match(LINKRGX) || [])
       .concat(txt.match(IMGRGX) || [])
+
     var pending = all.length
     var out = txt
 
     function done (element, err, pac) {
-      if (err) callback(err)
+      if (err) return callback(err)
       out = out.replace(element, pac)
       if (!--pending) callback(null, out)
     }
 
     all.forEach(function (element) {
       read(maybeAbs(xurl(element), root), function (err, buf) {
-        if (err) callback(err)
-        if (isLink(element))
-          pacCSS(buf, done.bind(null, element))
-        else if (isScript(element))
-          pacJS(buf, done.bind(null, element))
-        else if (isImg(element))
-          imgBuf2base64(buf, done.bind(null, element))
+        if (err) return callback(err)
+        else if (isLink(element)) pacCSS(buf, done.bind(null, element))
+        else if (isScript(element)) pacJS(buf, done.bind(null, element))
+        else if (isImg(element)) imgBuf2base64(buf, done.bind(null, element))
       })
     })
 
