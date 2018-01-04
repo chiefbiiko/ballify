@@ -16,39 +16,47 @@ var https = require('follow-redirects').https
 var valid = require('valid-url')
 
 var SCRIPTRGX = RegExp('<script[^>]+src=(?:"|\').+(?:"|\')[^>]*>\s*<\/script>')
+
 var IMGRGX = RegExp('<img[^>]+src=(?:"|\').+(?:"|\')[^>]*>')
+
 var LINKRGX = RegExp(
   '(?:<link[^>]+rel=(?:"|\')stylesheet(?:"|\')[^>]+' +
   'href=(?:"|\').+(?:"|\')[^>]*>)|' +
   '(?:<link[^>]+href=(?:"|\').+(?:"|\')[^>]+' +
   'rel=(?:"|\')stylesheet(?:"|\')[^>]*>)'
 )
+
 var IDLRGX = RegExp(
-  '[^\\d\\s][^\\s]{1,}\\.src\\s*=\\s*(?:"|\').+' +
-  '\\.(?:jpg|jpeg|JPG|JPEG|png|PNG)(?:"|\')'
+  '[^\\d][^\\s]{1,}\\.src\\s*=\\s*("|\').+' +
+  '\\.(?:jpg|jpeg|JPG|JPEG|png|PNG)("|\')'
 )
+
 var SETRGX = RegExp(
-  '[^\\d\\s][^\\s]{1,}\.setAttribute\\(\\s*(?:"|\')src(?:"|\'),\\s*(?:"|\').+' +
-  '\\.(?:jpg|jpeg|JPG|JPEG|png|PNG)(?:"|\')\\s*\\)'
+  '[^\\d][^\\s]{1,}\.setAttribute\\(\\s*("|\')src("|\'),\\s*("|\').+' +
+  '\\.(?:jpg|jpeg|JPG|JPEG|png|PNG)("|\')\\s*\\)'
 )
 
 function noop () {}
 
-function pacCSS (css) {
-  return '<style>' + css + '</style>'
+function pacCSS (css, cb) {
+  cb(null, '<style>' + css + '</style>')
 }
 
-function pacJS (js) {
-  return '<script>' + js + '</script>'
+function pacJS (js, cb) {
+  cb(null, '<script>' + js + '</script>')
 }
 
-function buf2Base64ImgDataUri (buf) {
-  return 'data:image/*;base64,' + buf.toString('base64')
+function buf2Base64ImgDataUri (buf, cb) {
+  cb(null, 'data:image/*;base64,' + buf.toString('base64'))
 }
 
-function buf2Base64Img (buf) {
+function buf2Base64Img (buf, cb) {
+  buf2Base64ImgDataUri(buf, function (err, datauri) {
+    if (err) return cb(err)
+    cb(null, '<img src="' + datauri + '" alt="base64-image">')
+  })
   // var src = 'data:image/*;base64,' +  buf.toString('base64')
-  return '<img src="' + buf2Base64ImgDataUri(buf) + '" alt="base64-image">'
+  // return '<img src="' + buf2Base64ImgDataUri(buf) + '" alt="base64-image">'
 }
 
 function getIt(mod, url, cb) {
@@ -109,23 +117,24 @@ function JSimgSrc2base64 (buf, root, cb) {
   // take into account location shifts: use path.join(url, imgurl)
   var pending = all.length
 //var out = js
-  if (!pending) return cb(null, pacJS(js))
+  if (!pending) return pacJS(js, cb)//cb(null, pacJS(js))
   // function done (url, err, datauri) {
   //   if (err) return callback(err)
   //   js = js.replace(url, datauri)
   //   if (!--pending) cb(null, js)
   // }
-console.log('ALL', all)
-console.log('ROOT', root)
-console.log('PENDING', pending)
-  all.forEach(function (statement) {
-console.log('STATEMENT', statement)
-    var url = maybeAbs(xsrc(statement), root)
-console.log('URL', url)
+
+  all.forEach(function (element) {
+    var url = maybeAbs(xsrc(element), root)
     read(url, function (err, buf) {
       if (err) return cb(err)
-      js = js.replace(url, buf2Base64ImgDataUri(buf))
-      if (!--pending) cb(null, pacJS(js))
+      buf2Base64ImgDataUri(buf, function (err, datauri) {
+        if (err) return cb(err)
+        js = js.replace(url, datauri)
+        if (!--pending) pacJS(js, cb)//cb(null, pacJS(js))
+      })
+      // js = js.replace(url, buf2Base64ImgDataUri(buf))
+      // if (!--pending) cb(null, pacJS(js))
       // done(url, null, )
       // buf2base64(buf, done.bind(null, url))
     })
@@ -135,7 +144,7 @@ console.log('URL', url)
 }
 
 // opts: crunch-css=true, merge-css=true, uglify-js=true, img-base64=false,
-//   crunch-html=true, gzip-ball=true
+//   crunch-html=false, gzip-ball=false
 function ballify (input, opts, callback) {
 
   if (typeof opts === 'function') {
@@ -157,12 +166,11 @@ function ballify (input, opts, callback) {
       .concat(txt.match(IMGRGX) || [])
 
     var pending = all.length
-    if (!pending) return callback(null, txt)
-
+    var out = txt
     function done (element, err, pac) {
       if (err) return callback(err)
-      txt = txt.replace(element, pac)
-      if (!--pending) callback(null, txt)
+      out = out.replace(element, pac)
+      if (!--pending) callback(null, out)
     }
 
     all.forEach(function (element) {
@@ -171,14 +179,15 @@ function ballify (input, opts, callback) {
         if (err) return callback(err)
         if (isLink(element)) {
           // pacCSS(buf, done.bind(null, element))
-          done(element, null, pacCSS(buf))
+          pacCSS(buf, done.bind(null, element))
+          // done(element, null, pacCSS(buf))
         } else if (isScript(element)) {
           // replacing img urls in js ..!!!
           JSimgSrc2base64(buf, url, done.bind(null, element))
           // pacJS(buf, done.bind(null, element))
         } else if (isImg(element)) {
-          // buf2Base64Img(buf, done.bind(null, element))
-          done(element, null, buf2Base64Img(buf))
+          buf2Base64Img(buf, done.bind(null, element))
+          // done(element, null, buf2Base64Img(buf))
         }
       })
     })

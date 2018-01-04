@@ -3,7 +3,7 @@ var fs = require('fs')
 var path = require('path')
 var child = require('child_process')
 
-var ballify = require('.').ballify
+var ballify = require('./index').ballify
 
 tape('ball should not contain any more external references', function (t) {
 
@@ -73,12 +73,32 @@ tape('non "https?"-prefixed urls', function (t) {
 
 })
 
-tape('replacing img in html', function (t) {
+tape('replacing img src in html', function (t) {
+
+  var b4 = fs.readFileSync('testfiles/index5.html')
+
+  t.notOk(/<img src="data.+"/.test(b4), 'img data uri not present')
 
   ballify('testfiles/index5.html', function (err, ball) {
     if (err) t.end(err)
 
     t.ok(/<img src="data.+"/.test(ball), 'img data uri present')
+
+    t.end()
+  })
+
+})
+
+tape('replacing img src in js', function (t) {
+
+  var b4 = fs.readFileSync('testfiles/index6.html')
+
+  t.notOk(/data:image\/\*;base64,/.test(b4), 'img data uri not present')
+
+  ballify('testfiles/index6.html', function (err, ball) {
+    if (err) t.end(err)
+
+    t.ok(/data:image\/\*;base64,/.test(ball), 'img data uri present')
 
     t.end()
   })
