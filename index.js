@@ -6,7 +6,7 @@
 //   + separate api and cli
 //   + ~implement GET against non-"https?" prefixed urls + test!~
 //   + ~ballify images: to base64? - ALSO WITHIN js !!!~
-//   + implement minifying scripts and styles and gzippin (add as cli args)
+//   + implement opts!!!
 //   + ~write a test that shows that only empty scripts are considered~
 //   + ~if input is not supplied look for index.html in cwd~
 
@@ -76,12 +76,12 @@ function xhref (link) {
   return link.replace(/^.+href=.([^\s'"]+).+$/, '$1')
 }
 
-function xsrc (script) {
-  return script.replace(/^.+src=.([^\s'"]+).+$/, '$1')
+function xsrc (scr) {
+  return scr.replace(/^.+src=.([^\s'"]+).+$/, '$1')
 }
 
-function xyzsrc (statement) {
-  return statement.replace(XRGX, '$1')
+function xyzsrc (stmt) {
+  return stmt.replace(XRGX, '$1')
 }
 
 function xurl (ele) {
@@ -115,8 +115,8 @@ function JSimgSrc2base64 (buf, origin, cb) {
 
   if (!pending) return cb(null, pacJS(js))
 
-  all.forEach(function (statement) {
-    var src = xurl(statement)
+  all.forEach(function (stmt) {
+    var src = xurl(stmt)
     var url = maybeAbs(src, path.dirname(origin))
     read(url, function (err, buf) {
       if (err) return cb(err)
