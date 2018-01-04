@@ -3,7 +3,7 @@ var fs = require('fs')
 var path = require('path')
 var child = require('child_process')
 
-var ballify = require('.')
+var ballify = require('.').ballify
 
 tape('ball should not contain any more external references', function (t) {
 
