@@ -1,16 +1,17 @@
 // TODO:
+//   + whatabout gif tiff bmp?!
+//   + implement opts - minification!!!
+//   + separate api and cli
 //   + ~consider svgs when looking for images~
-//   + ballify images inclluded in css! to base64
+//   + ~ballify images inclluded in css! to base64~
 //   + ~check whether links without rel="stylesheet" are actually css~
 //   + ~print help on demand~
 //   + ~test GET~
-//   + separate api and cli
 //   + ~implement GET against non-"https?" prefixed urls + test!~
 //   + ~ballify images: to base64? - ALSO WITHIN js !!!~
-//   + implement opts!!!
 //   + ~write a test that shows that only empty scripts are considered~
 //   + ~if input is not supplied look for index.html in cwd~
-//   + whatabout gif tiff bmp?
+
 
 var fs = require('fs')
 var path = require('path')
@@ -125,7 +126,6 @@ function imgSrc2base64 (buf, el, origin, cb) {
   var all = isLink(el)
     ? (txt.match(CSSRGX) || [])
     : (txt.match(IDLRGX) || []).concat(txt.match(SETRGX) || [])
-
   var pending = all.length
 
   if (!pending) return cb(null, pacJS(txt))
@@ -139,12 +139,12 @@ function imgSrc2base64 (buf, el, origin, cb) {
       if (!--pending) cb(null, isLink(el) ? pacCSS(txt) : pacJS(txt))
     })
   })
+
 }
 
 // opts: crunch-css=true, merge-css=true, uglify-js=true, img-base64=false,
 //   crunch-html=true, gzip-ball=true
 function ballify (index, opts, callback) {
-
   if (typeof opts === 'function') {
     callback = opts
     opts = {}
@@ -159,19 +159,18 @@ function ballify (index, opts, callback) {
   fs.readFile(index, 'utf8', function (err, txt) {
     if (err) return callback(err)
 
-    var all = (txt.match(SCRIPTRGX) || [])
-      .concat(txt.match(LINKRGX) || [])
-      .concat(txt.match(IMGRGX) || [])
-
-    var pending = all.length
-
-    if (!pending) return callback(null, txt)
-
     function done (el, err, pac) {
       if (err) return callback(err)
       txt = txt.replace(el, pac)
       if (!--pending) callback(null, txt)
     }
+
+    var all = (txt.match(SCRIPTRGX) || [])
+      .concat(txt.match(LINKRGX) || [])
+      .concat(txt.match(IMGRGX) || [])
+    var pending = all.length
+
+    if (!pending) return callback(null, txt)
 
     all.forEach(function (el) {
       var url = maybeAbs(xurl(el), root)
