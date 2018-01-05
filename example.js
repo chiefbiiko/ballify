@@ -1,6 +1,6 @@
-var ballify = require('./index').ballify
-var fs = require('fs')
 var child = require('child_process')
+var fs = require('fs')
+var ballify = require('./index').ballify
 
 ballify('testfiles/index99.html', function (err, ball) {
   if (err) return console.error(err)
