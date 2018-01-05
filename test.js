@@ -89,16 +89,34 @@ tape('replacing img src in html', function (t) {
 
 })
 
-tape('replacing img src in js', function (t) {
+tape('replacing img sources in js', function (t) {
 
   var b4 = fs.readFileSync('testfiles/index6.html')
 
   t.notOk(/data:image\/\*;base64,/.test(b4), 'img data uri not present')
+  t.notOk(/data:image\/svg\+xml;base64,/.test(b4), 'svg data uri not present')
 
   ballify('testfiles/index6.html', function (err, ball) {
     if (err) t.end(err)
 
     t.ok(/data:image\/\*;base64,/.test(ball), 'img data uri present')
+    t.ok(/data:image\/svg\+xml;base64,/.test(ball), 'svg data uri present')
+
+    t.end()
+  })
+
+})
+
+tape('in-html svg img to base 64 img', function (t) {
+
+  var b4 = fs.readFileSync('testfiles/index7.html')
+
+  t.notOk(/data:image\/svg\+xml;base64,/.test(b4), 'img data uri not present')
+
+  ballify('testfiles/index7.html', function (err, ball) {
+    if (err) t.end(err)
+
+    t.ok(/data:image\/svg\+xml;base64,/.test(ball), 'img data uri present')
 
     t.end()
   })

@@ -1,5 +1,5 @@
 // TODO:
-//   + ~consider svgs when looking for images~
+//   + consider svgs when looking for images
 //   + ballify images inclluded in css! to base64
 //   + ~check whether links without rel="stylesheet" are actually css~
 //   + ~print help on demand~
@@ -10,7 +10,6 @@
 //   + implement opts!!!
 //   + ~write a test that shows that only empty scripts are considered~
 //   + ~if input is not supplied look for index.html in cwd~
-//   + whatabout gif tiff bmp?
 
 var fs = require('fs')
 var path = require('path')
@@ -18,27 +17,22 @@ var http = require('follow-redirects').http
 var https = require('follow-redirects').https
 var valid = require('valid-url')
 
-var XRGX = RegExp('^.*(?:"|\')(.+\\.(?:jpg|jpeg|png|svg))(?:"|\').*$', 'i')
-var SCRIPTRGX = RegExp(
-  '<script[^>]+src=(?:"|\').+(?:"|\')[^>]*>\s*<\/script>', 'g'
-)
-var IMGRGX = RegExp(
-  '<img[^>]+src=(?:"|\').+' +
-  '\\.(?:jpg|jpeg|JPG|JPEG|png|PNG|svg|SVG)(?:"|\')[^>]*>', 'g'
-)
+var XRGX = RegExp('^.*(?:"|\')(.+\\.(?:jpg|jpeg|png))(?:"|\').*$', 'i')
+var SCRIPTRGX = RegExp('<script[^>]+src=(?:"|\').+(?:"|\')[^>]*>\s*<\/script>')
+var IMGRGX = RegExp('<img[^>]+src=(?:"|\').+(?:"|\')[^>]*>')
 var LINKRGX = RegExp(
   '(?:<link[^>]+rel=(?:"|\')stylesheet(?:"|\')[^>]+' +
   'href=(?:"|\').+(?:"|\')[^>]*>)|' +
   '(?:<link[^>]+href=(?:"|\').+(?:"|\')[^>]+' +
-  'rel=(?:"|\')stylesheet(?:"|\')[^>]*>)', 'g'
+  'rel=(?:"|\')stylesheet(?:"|\')[^>]*>)'
 )
 var IDLRGX = RegExp(
   '[^\\d\\s][^\\s]{1,}\\.src\\s*=\\s*(?:"|\').+' +
-  '\\.(?:jpg|jpeg|JPG|JPEG|png|PNG|svg|SVG)(?:"|\')', 'g'
+  '\\.(?:jpg|jpeg|JPG|JPEG|png|PNG)(?:"|\')'
 )
 var SETRGX = RegExp(
   '[^\\d\\s][^\\s]{1,}\.setAttribute\\(\\s*(?:"|\')src(?:"|\'),\\s*(?:"|\').+' +
-  '\\.(?:jpg|jpeg|JPG|JPEG|png|PNG|svg|SVG)(?:"|\')\\s*\\)', 'g'
+  '\\.(?:jpg|jpeg|JPG|JPEG|png|PNG)(?:"|\')\\s*\\)'
 )
 
 function noop () {}
@@ -51,13 +45,12 @@ function pacJS (js) {
   return '<script>' + js + '</script>'
 }
 
-function buf2Base64ImgDataUri (buf, url) {
-  var type = /\.svg$/i.test(url) ? 'svg+xml' : '*'
-  return 'data:image/' + type + ';base64,' + buf.toString('base64')
+function buf2Base64ImgDataUri (buf) {
+  return 'data:image/*;base64,' + buf.toString('base64')
 }
 
-function buf2Base64Img (buf, url) {
-  return '<img src="' + buf2Base64ImgDataUri(buf, url) + '" alt="base64-img">'
+function buf2Base64Img (buf) {
+  return '<img src="' + buf2Base64ImgDataUri(buf) + '" alt="base64-image">'
 }
 
 function getIt(mod, url, cb) {
@@ -128,7 +121,7 @@ function JSimgSrc2base64 (buf, origin, cb) {
     var url = maybeAbs(src, path.dirname(origin))
     read(url, function (err, buf) {
       if (err) return cb(err)
-      js = js.replace(src, buf2Base64ImgDataUri(buf, url))
+      js = js.replace(src, buf2Base64ImgDataUri(buf))
       if (!--pending) cb(null, pacJS(js))
     })
   })
@@ -172,7 +165,7 @@ function ballify (index, opts, callback) {
         if (err) return callback(err)
         if (isLink(ele)) done(ele, null, pacCSS(buf))
         else if (isScript(ele)) JSimgSrc2base64(buf, url, done.bind(null, ele))
-        else if (isImg(ele)) done(ele, null, buf2Base64Img(buf, url))
+        else if (isImg(ele)) done(ele, null, buf2Base64Img(buf))
       })
     })
 
