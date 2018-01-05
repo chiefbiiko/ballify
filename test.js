@@ -18,7 +18,7 @@ tape('ball should not contain any more external references', function (t) {
 tape('ball name can be set from cli', function (t) {
   var testfile = './testfiles/index.html'
   var outfile = './testfiles/bundle.html'
-  var cmd = 'node cli ' + testfile + ' ' + outfile
+  var cmd = 'node old_cli.js ' + testfile + ' ' + outfile
   child.exec(cmd, function (err, stdout, stderr) {
    if (err || stderr) t.end(err || stderr)
    t.ok(fs.existsSync(outfile), 'file should exist')
