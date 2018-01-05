@@ -19,6 +19,10 @@ var https = require('follow-redirects').https
 var valid = require('valid-url')
 
 var XRGX = RegExp('^.*(?:"|\')(.+\\.(?:jpg|jpeg|png|svg))(?:"|\').*$', 'i')
+var CSSRGX = RegExp(
+  'url\\(\\s*(?:"|\').+' +
+  '\\.(?:jpg|jpeg|JPG|JPEG|png|PNG|svg|SVG)(?:"|\')\\s*\\)', 'g'
+)
 var SCRIPTRGX = RegExp(
   '<script[^>]+src=(?:"|\').+(?:"|\')[^>]*>\s*<\/script>', 'g'
 )
@@ -92,22 +96,22 @@ function xyzsrc (stmt) {
   return stmt.replace(XRGX, '$1')
 }
 
-function xurl (ele) {
-  if (isLink(ele)) return xhref(ele)
-  else if (isImg(ele) || isScript(ele)) return xsrc(ele)
-  else return xyzsrc(ele)
+function xurl (el) {
+  if (isLink(el)) return xhref(el)
+  else if (isImg(el) || isScript(el)) return xsrc(el)
+  else return xyzsrc(el)
 }
 
-function isImg (ele) {
-  return ele.startsWith('<img')
+function isImg (el) {
+  return el.startsWith('<img')
 }
 
-function isScript (ele) {
-  return ele.startsWith('<script')
+function isScript (el) {
+  return el.startsWith('<script')
 }
 
-function isLink (ele) {
-  return ele.startsWith('<link')
+function isLink (el) {
+  return el.startsWith('<link')
 }
 
 function maybeAbs (url, root) { // magic 36 to make sure its not a url
@@ -116,20 +120,23 @@ function maybeAbs (url, root) { // magic 36 to make sure its not a url
   else return url
 }
 
-function JSimgSrc2base64 (buf, origin, cb) {
-  var js = buf.toString()
-  var all = (js.match(IDLRGX) || []).concat(js.match(SETRGX) || [])
+function imgSrc2base64 (buf, el, origin, cb) {
+  var txt = buf.toString()
+  var all = isLink(el)
+    ? (txt.match(CSSRGX) || [])
+    : (txt.match(IDLRGX) || []).concat(txt.match(SETRGX) || [])
+
   var pending = all.length
 
-  if (!pending) return cb(null, pacJS(js))
+  if (!pending) return cb(null, pacJS(txt))
 
   all.forEach(function (stmt) {
     var src = xurl(stmt)
     var url = maybeAbs(src, path.dirname(origin))
-    read(url, function (err, buf) {
+    read(url, function (err, imgbuf) {
       if (err) return cb(err)
-      js = js.replace(src, buf2Base64ImgDataUri(buf, url))
-      if (!--pending) cb(null, pacJS(js))
+      txt = txt.replace(src, buf2Base64ImgDataUri(imgbuf, url))
+      if (!--pending) cb(null, isLink(el) ? pacCSS(txt) : pacJS(txt))
     })
   })
 }
@@ -160,19 +167,20 @@ function ballify (index, opts, callback) {
 
     if (!pending) return callback(null, txt)
 
-    function done (ele, err, pac) {
+    function done (el, err, pac) {
       if (err) return callback(err)
-      txt = txt.replace(ele, pac)
+      txt = txt.replace(el, pac)
       if (!--pending) callback(null, txt)
     }
 
-    all.forEach(function (ele) {
-      var url = maybeAbs(xurl(ele), root)
+    all.forEach(function (el) {
+      var url = maybeAbs(xurl(el), root)
       read(url, function (err, buf) {
         if (err) return callback(err)
-        if (isLink(ele)) done(ele, null, pacCSS(buf))
-        else if (isScript(ele)) JSimgSrc2base64(buf, url, done.bind(null, ele))
-        else if (isImg(ele)) done(ele, null, buf2Base64Img(buf, url))
+        if (isLink(el) || isScript(el))
+          imgSrc2base64(buf, el, url, done.bind(null, el))
+        else if (isImg(el))
+          done(el, null, buf2Base64Img(buf, url))
       })
     })
 

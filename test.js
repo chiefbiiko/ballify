@@ -148,6 +148,19 @@ tape('in-html svg img to base 64 img', function (t) {
 
 tape('replacing img urls in css', function (t) {
 
+  fs.readFile('testfiles/index8.html', function (err, buf) {
+    if (err) t.end(err)
 
+    t.notOk(/data:image\/\*;base64,/.test(buf), 'img data uri not present')
+
+    ballify('testfiles/index8.html', function (err, ball) {
+      if (err) t.end(err)
+
+      t.ok(/data:image\/\*;base64,/.test(ball), 'img data uri present')
+
+      t.end()
+    })
+
+  })
 
 })
