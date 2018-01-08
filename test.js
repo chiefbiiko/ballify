@@ -15,20 +15,6 @@ tape('ball should not contain any more external references', function (t) {
   })
 })
 
-tape('ball name can be set from cli', function (t) {
-  var testfile = './testfiles/index.html'
-  var outfile = './testfiles/bundle.html'
-  var cmd = 'node old_cli.js ' + testfile + ' ' + outfile
-  child.exec(cmd, function (err, stdout, stderr) {
-   if (err || stderr) t.end(err || stderr)
-   t.ok(fs.existsSync(outfile), 'file should exist')
-   fs.unlink(outfile, function (err) {
-     if (err) t.end('could not delete ' + outfile)
-     t.end()
-   })
-  })
-})
-
 tape('getting a url', function (t) {
   var testfile = './testfiles/index2.html'
   fs.readFile(testfile, function (err, buf) {
@@ -36,7 +22,7 @@ tape('getting a url', function (t) {
     t.ok(/<script.*><\/script>/.test(buf), 'empty script')
     ballify(testfile, function (err, ball) {
       if (err) t.end(err)
-      t.ok(/<script.*>[^<]+<\/script>/.test(ball), 'full script')
+      t.ok(/<script.*>.+<\/script>/.test(ball), 'full script')
       t.ok(ball.length > 1000, 'rily there')
       t.end()
     })
@@ -60,10 +46,10 @@ tape('non "https?"-prefixed urls', function (t) {
   var testfile = 'testfiles/index4.html'
   fs.readFile(testfile, function (err, buf) {
     if (err) t.end(err)
-    t.notOk(/<script[^>]*>[^<]+<\/script>/.test(buf), 'no full script')
+    t.notOk(/<script[^>]*>.+<\/script>/.test(buf), 'no full script')
     ballify(testfile, function (err, ball) {
       if (err) t.end(err)
-      t.ok(/<script[^>]*>[^<]+<\/script>/.test(ball), 'full script')
+      t.ok(/<script[^>]*>.+<\/script>/.test(ball), 'full script')/*[^<]*/
       t.end()
     })
   })
@@ -120,5 +106,32 @@ tape('replacing img urls in css', function (t) {
       t.ok(/data:image\/\*;base64,/.test(ball), 'img data uri present')
       t.end()
     })
+  })
+})
+
+tape('converting a gif to a base64 representation', function (t) {
+  var testfile = 'testfiles/index9.html'
+  fs.readFile(testfile, function (err, buf) {
+    if (err) t.end(err)
+    t.notOk(/data:image\/\*;base64,/.test(buf), 'gif data uri not present')
+    ballify(testfile, function (err, ball) {
+      if (err) t.end(err)
+      t.ok(/data:image\/\*;base64,/.test(ball), 'gif data uri present')
+      t.end()
+    })
+  })
+})
+
+tape('ball name can be set from cli', function (t) {
+  var testfile = './testfiles/index.html'
+  var outfile = './testfiles/bundle.html'
+  var cmd = 'node old_cli.js ' + testfile + ' ' + outfile
+  child.exec(cmd, function (err, stdout, stderr) {
+   if (err || stderr) t.end(err || stderr)
+   t.ok(fs.existsSync(outfile), 'file should exist')
+   fs.unlink(outfile, function (err) {
+     if (err) t.end('could not delete ' + outfile)
+     t.end()
+   })
   })
 })

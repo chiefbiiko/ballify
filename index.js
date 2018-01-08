@@ -1,5 +1,5 @@
 // TODO:
-//   + whatabout gif tiff bmp?!
+//   + ~whatabout gif tiff bmp?!~
 //   + implement opts - minification!!!
 //   + separate api and cli
 //   + ~consider svgs when looking for images~
@@ -12,24 +12,25 @@
 //   + ~write a test that shows that only empty scripts are considered~
 //   + ~if input is not supplied look for index.html in cwd~
 
-
 var fs = require('fs')
 var path = require('path')
 var http = require('follow-redirects').http
 var https = require('follow-redirects').https
 var valid = require('valid-url')
+var ugly = require('uglify-es')
+var crunchifyCSS = require('./crunchify-css/index')
 
-var XRGX = RegExp('^.*(?:"|\')(.+\\.(?:jpg|jpeg|png|svg))(?:"|\').*$', 'i')
+var XRGX = RegExp('^.*(?:"|\')(.+\\.(?:jpg|jpeg|png|svg|gif))(?:"|\').*$', 'i')
 var CSSRGX = RegExp(
   'url\\(\\s*(?:"|\').+' +
-  '\\.(?:jpg|jpeg|JPG|JPEG|png|PNG|svg|SVG)(?:"|\')\\s*\\)', 'g'
+  '\\.(?:jpg|jpeg|JPG|JPEG|png|PNG|svg|SVG|gif|GIF)(?:"|\')\\s*\\)', 'g'
 )
 var SCRIPTRGX = RegExp(
   '<script[^>]+src=(?:"|\').+(?:"|\')[^>]*>\s*<\/script>', 'g'
 )
 var IMGRGX = RegExp(
   '<img[^>]+src=(?:"|\').+' +
-  '\\.(?:jpg|jpeg|JPG|JPEG|png|PNG|svg|SVG)(?:"|\')[^>]*>', 'g'
+  '\\.(?:jpg|jpeg|JPG|JPEG|png|PNG|svg|SVG|gif|GIF)(?:"|\')[^>]*>', 'g'
 )
 var LINKRGX = RegExp(
   '(?:<link[^>]+rel=(?:"|\')stylesheet(?:"|\')[^>]+' +
@@ -39,20 +40,26 @@ var LINKRGX = RegExp(
 )
 var IDLRGX = RegExp(
   '[^\\d\\s][^\\s]{1,}\\.src\\s*=\\s*(?:"|\').+' +
-  '\\.(?:jpg|jpeg|JPG|JPEG|png|PNG|svg|SVG)(?:"|\')', 'g'
+  '\\.(?:jpg|jpeg|JPG|JPEG|png|PNG|svg|SVG|gif|GIF)(?:"|\')', 'g'
 )
 var SETRGX = RegExp(
   '[^\\d\\s][^\\s]{1,}\.setAttribute\\(\\s*(?:"|\')src(?:"|\'),\\s*(?:"|\').+' +
-  '\\.(?:jpg|jpeg|JPG|JPEG|png|PNG|svg|SVG)(?:"|\')\\s*\\)', 'g'
+  '\\.(?:jpg|jpeg|JPG|JPEG|png|PNG|svg|SVG|gif|GIF)(?:"|\')\\s*\\)', 'g'
 )
 
 function noop () {}
 
-function pacCSS (css) {
+function isBool (x) {
+  return x && Object.getPrototypeOf(x) === Boolean.prototype
+}
+
+function pacCSS (css, opts) {
+  if (opts && opts.crunchifyCSS) css = crunchifyCSS(css, opts)
   return '<style>' + css + '</style>'
 }
 
-function pacJS (js) {
+function pacJS (js, opts) {
+  if (opts && opts.uglifyJS) js = ugly.minify(js).code
   return '<script>' + js + '</script>'
 }
 
@@ -121,14 +128,15 @@ function maybeAbs (url, root) { // magic 36 to make sure its not a url
   else return url
 }
 
-function imgSrc2base64 (buf, el, origin, cb) {
+function imgSrc2Base64ThenPac (buf, el, origin, opts, cb) {
   var txt = buf.toString()
   var all = isLink(el)
     ? (txt.match(CSSRGX) || [])
     : (txt.match(IDLRGX) || []).concat(txt.match(SETRGX) || [])
   var pending = all.length
 
-  if (!pending) return cb(null, pacJS(txt))
+  if (!opts.base64Images || !pending)
+    return cb(null, isLink(el) ? pacCSS(txt, opts) : pacJS(txt, opts))
 
   all.forEach(function (stmt) {
     var src = xurl(stmt)
@@ -136,22 +144,31 @@ function imgSrc2base64 (buf, el, origin, cb) {
     read(url, function (err, imgbuf) {
       if (err) return cb(err)
       txt = txt.replace(src, buf2Base64ImgDataUri(imgbuf, url))
-      if (!--pending) cb(null, isLink(el) ? pacCSS(txt) : pacJS(txt))
+      if (!--pending) {
+        cb(null, isLink(el) ? pacCSS(txt, opts) : pacJS(txt, opts))
+      }
     })
   })
 
 }
 
-// opts: crunch-css=true, merge-css=true, uglify-js=true, img-base64=false,
-//   crunch-html=true, gzip-ball=true
+// opts: crunchifyCSS: true, mergeCSS: true, uglifyJS: true, base64Images: true,
+//   crunchHTML=true, gzip: true
 function ballify (index, opts, callback) {
   if (typeof opts === 'function') {
     callback = opts
     opts = {}
   }
 
-  if (!opts) opts = {}
   if (!callback) callback = noop
+  if (!opts) opts = {}
+
+  opts.gzip = isBool(opts.gzip) ? opts.gzip : true
+  opts.base64Images = isBool(opts.base64Images) ? opts.base64Images : true // Y
+  opts.uglifyJS = isBool(opts.uglifyJS) ? opts.uglifyJS : true
+  opts.crunchifyCSS = isBool(opts.crunchifyCSS) ? opts.crunchifyCSS : true
+  opts.mergeCSS = isBool(opts.mergeCSS) ? opts.mergeCSS : true
+  opts.crunchHTML = isBool(opts.crunchHTML) ? opts.crunchHTML : true
 
   index = path.join(index || 'index.html')
   var root = path.dirname(path.join(__dirname, index))
@@ -176,10 +193,11 @@ function ballify (index, opts, callback) {
       var url = maybeAbs(xurl(el), root)
       read(url, function (err, buf) {
         if (err) return callback(err)
-        if (isLink(el) || isScript(el))
-          imgSrc2base64(buf, el, url, done.bind(null, el))
-        else if (isImg(el))
-          done(el, null, buf2Base64Img(buf, url))
+        if (isLink(el) || isScript(el)) {
+          imgSrc2Base64ThenPac(buf, el, url, opts, done.bind(null, el))
+        } else if (isImg(el)) {
+          done(el, null, opts.base64Images ? buf2Base64Img(buf, url) : buf)
+        }
       })
     })
 

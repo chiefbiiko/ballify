@@ -7,7 +7,7 @@ ballify('testfiles/index99.html', function (err, ball) {
   fs.writeFile('example.html', ball, function (err) {
     if (err) return console.error(err)
     console.log('just wrote example.html, opening chrome...')
-    child.exec('open chrome example.html', function (err, stdout, stderr) {
+    child.exec('start chrome example.html', function (err, stdout, stderr) {
       if (err || stderr) return console.error(err || stderr)
       console.log('verify that the generated ball still is a working webpage')
     })
