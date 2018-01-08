@@ -14,6 +14,7 @@
 
 var fs = require('fs')
 var path = require('path')
+var zlib = require('zlib')
 var http = require('follow-redirects').http
 var https = require('follow-redirects').https
 var valid = require('valid-url')
@@ -130,13 +131,15 @@ function maybeAbs (url, root) { // magic 36 to make sure its not a url
 
 function imgSrc2Base64ThenPac (buf, el, origin, opts, cb) {
   var txt = buf.toString()
-  var all = isLink(el)
-    ? (txt.match(CSSRGX) || [])
-    : (txt.match(IDLRGX) || []).concat(txt.match(SETRGX) || [])
+  var isCSS = isLink(el)
+  var all
+  if (isCSS) all = txt.match(CSSRGX) || []
+  else all = (txt.match(IDLRGX) || []).concat(txt.match(SETRGX) || [])
   var pending = all.length
 
-  if (!opts.base64Images || !pending)
-    return cb(null, isLink(el) ? pacCSS(txt, opts) : pacJS(txt, opts))
+  if (!opts.base64Images || !pending) {
+    return cb(null, isCSS ? pacCSS(txt, opts) : pacJS(txt, opts))
+  }
 
   all.forEach(function (stmt) {
     var src = xurl(stmt)
@@ -145,7 +148,7 @@ function imgSrc2Base64ThenPac (buf, el, origin, opts, cb) {
       if (err) return cb(err)
       txt = txt.replace(src, buf2Base64ImgDataUri(imgbuf, url))
       if (!--pending) {
-        cb(null, isLink(el) ? pacCSS(txt, opts) : pacJS(txt, opts))
+        cb(null, isCSS ? pacCSS(txt, opts) : pacJS(txt, opts))
       }
     })
   })
@@ -179,7 +182,11 @@ function ballify (index, opts, callback) {
     function done (el, err, pac) {
       if (err) return callback(err)
       txt = txt.replace(el, pac)
-      if (!--pending) callback(null, txt)
+      if (!--pending) {
+      //if (opts.crunchHTML) txt = txt.replace(/>\s+</g, '><').trim()
+      //if (opts.gzip) return zlib.gzip(txt, callback)
+	callback(null, txt)
+      }
     }
 
     var all = (txt.match(SCRIPTRGX) || [])
