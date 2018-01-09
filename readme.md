@@ -36,6 +36,8 @@ npm install --global ballify
 ballify index.html -o ball.html.gz
 ```
 
+Check out `ballify --help`.
+
 ### API
 
 ``` js
@@ -72,6 +74,8 @@ Ballify a `HTML` file. The callback has the signature `callback(err, ball)`. The
 To keep things simple. To serve all front-end assets in one response.
 
 Go ahead and use `ballify` if you are developing a single page application and wish to bundle up all frontend assets into one file.
+
+***
 
 ## License
 
