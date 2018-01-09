@@ -1,7 +1,8 @@
 // TODO:
+//   + also ballify fonts that are loaded into the webpage!!!
 //   + ~whatabout gif tiff bmp?!~
-//   + implement opts - minification!!!
-//   + separate api and cli
+//   + ~implement opts - minification!!!~
+//   + ~separate api and cli~
 //   + ~consider svgs when looking for images~
 //   + ~ballify images inclluded in css! to base64~
 //   + ~check whether links without rel="stylesheet" are actually css~
@@ -51,7 +52,13 @@ var SETRGX = RegExp(
 function noop () {}
 
 function isBool (x) {
-  return x && Object.getPrototypeOf(x) === Boolean.prototype
+  return x === false || x === true
+}
+
+function problyUnminified (js) {
+  // var CMTRGX = /(?:\/\/|\/\*.*\*\/)/
+  var N = (js.match(/\n/g) || []).length
+  return !(N < (js.length / 160))// || CMTRGX.test(js)
 }
 
 function pacCSS (css, opts) {
@@ -59,8 +66,8 @@ function pacCSS (css, opts) {
   return '<style>' + css + '</style>'
 }
 
-function pacJS (js, opts) {
-  if (opts && opts.uglifyJS) js = ugly.minify(js).code
+function pacJS (js, opts) { // hopefully not minified yet
+  if (opts && opts.uglifyJS && problyUnminified(js)) js = ugly.minify(js).code
   return '<script>' + js + '</script>'
 }
 
@@ -166,12 +173,13 @@ function ballify (index, opts, callback) {
   if (!callback) callback = noop
   if (!opts) opts = {}
 
-  opts.gzip = isBool(opts.gzip) ? opts.gzip : true
-  opts.base64Images = isBool(opts.base64Images) ? opts.base64Images : true // Y
-  opts.uglifyJS = isBool(opts.uglifyJS) ? opts.uglifyJS : true
-  opts.crunchifyCSS = isBool(opts.crunchifyCSS) ? opts.crunchifyCSS : true
-  opts.mergeCSS = isBool(opts.mergeCSS) ? opts.mergeCSS : true
-  opts.crunchHTML = isBool(opts.crunchHTML) ? opts.crunchHTML : true
+  var _opts = {}
+  _opts.gzip = isBool(opts.gzip) ? opts.gzip : true
+  _opts.base64Images = isBool(opts.base64Images) ? opts.base64Images : true
+  _opts.uglifyJS = isBool(opts.uglifyJS) ? opts.uglifyJS : true
+  _opts.crunchifyCSS = isBool(opts.crunchifyCSS) ? opts.crunchifyCSS : true
+  _opts.merge = isBool(opts.mergeCSS) ? opts.mergeCSS : true
+  _opts.crunchHTML = isBool(opts.crunchHTML) ? opts.crunchHTML : true
 
   index = path.join(index || 'index.html')
   var root = path.dirname(path.join(__dirname, index))
@@ -183,9 +191,9 @@ function ballify (index, opts, callback) {
       if (err) return callback(err)
       txt = txt.replace(el, pac)
       if (!--pending) {
-      //if (opts.crunchHTML) txt = txt.replace(/>\s+</g, '><').trim()
-      //if (opts.gzip) return zlib.gzip(txt, callback)
-	callback(null, txt)
+        if (_opts.crunchHTML) txt = txt.replace(/>\s+</g, '><').trim()
+        if (_opts.gzip) return zlib.gzip(Buffer.from(txt), callback)
+	      callback(null, Buffer.from(txt))
       }
     }
 
@@ -201,9 +209,9 @@ function ballify (index, opts, callback) {
       read(url, function (err, buf) {
         if (err) return callback(err)
         if (isLink(el) || isScript(el)) {
-          imgSrc2Base64ThenPac(buf, el, url, opts, done.bind(null, el))
+          imgSrc2Base64ThenPac(buf, el, url, _opts, done.bind(null, el))
         } else if (isImg(el)) {
-          done(el, null, opts.base64Images ? buf2Base64Img(buf, url) : buf)
+          done(el, null, _opts.base64Images ? buf2Base64Img(buf, url) : buf)
         }
       })
     })

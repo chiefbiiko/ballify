@@ -7,7 +7,7 @@ var ballify = require('./index').ballify
 
 tape('ball should not contain any more external references', function (t) {
   var testfile = './testfiles/index.html'
-  ballify(testfile, function (err, ball) {
+  ballify(testfile, { gzip: false }, function (err, ball) {
     if (err) t.end(err)
     t.notOk(/rel="stylesheet"/i.test(ball), 'no more style links')
     t.notOk(/<script\s+src=".+">/i.test(ball), 'no more external js')
@@ -20,7 +20,7 @@ tape('getting a url', function (t) {
   fs.readFile(testfile, function (err, buf) {
     if (err) t.end(err)
     t.ok(/<script.*><\/script>/.test(buf), 'empty script')
-    ballify(testfile, function (err, ball) {
+    ballify(testfile, { gzip: false }, function (err, ball) {
       if (err) t.end(err)
       t.ok(/<script.*>.+<\/script>/.test(ball), 'full script')
       t.ok(ball.length > 1000, 'rily there')
@@ -34,7 +34,7 @@ tape('only empty scripts are replaced', function (t) {
   fs.readFile(testfile, function (err, buf) {
     if (err) t.end(err)
     t.ok(/<script.*>1\+1<\/script>/.test(buf), 'dumb script there')
-    ballify(testfile, function (err, ball) {
+    ballify(testfile, { gzip: false }, function (err, ball) {
       if (err) t.end(err)
       t.ok(/<script.*>1\+1<\/script>/.test(ball), 'dumb script there still')
       t.end()
@@ -47,7 +47,7 @@ tape('non "https?"-prefixed urls', function (t) {
   fs.readFile(testfile, function (err, buf) {
     if (err) t.end(err)
     t.notOk(/<script[^>]*>.+<\/script>/.test(buf), 'no full script')
-    ballify(testfile, function (err, ball) {
+    ballify(testfile, { gzip: false }, function (err, ball) {
       if (err) t.end(err)
       t.ok(/<script[^>]*>.+<\/script>/.test(ball), 'full script')/*[^<]*/
       t.end()
@@ -60,7 +60,7 @@ tape('replacing img src in html', function (t) {
   fs.readFile(testfile, function (err, buf) {
     if (err) t.end(err)
     t.notOk(/<img src="data.+"/.test(buf), 'img data uri not present')
-    ballify(testfile, function (err, ball) {
+    ballify(testfile, { gzip: false }, function (err, ball) {
       if (err) t.end(err)
       t.ok(/<img src="data.+"/.test(ball), 'img data uri present')
       t.end()
@@ -74,7 +74,7 @@ tape('replacing img sources in js', function (t) {
     if (err) t.end(err)
     t.notOk(/data:image\/\*;base64,/.test(buf), 'img data uri not present')
     t.notOk(/data:image\/svg\+xml;base64,/.test(buf), 'no svg data uri')
-    ballify(testfile, function (err, ball) {
+    ballify(testfile, { gzip: false }, function (err, ball) {
       if (err) t.end(err)
       t.ok(/data:image\/\*;base64,/.test(ball), 'img data uri present')
       t.ok(/data:image\/svg\+xml;base64,/.test(ball), 'svg data uri present')
@@ -88,7 +88,7 @@ tape('in-html svg img to base 64 img', function (t) {
   fs.readFile(testfile, function (err, buf) {
     if (err) t.end(err)
     t.notOk(/data:image\/svg\+xml;base64,/.test(buf), 'no img data uri')
-    ballify(testfile, function (err, ball) {
+    ballify(testfile, { gzip: false }, function (err, ball) {
       if (err) t.end(err)
       t.ok(/data:image\/svg\+xml;base64,/.test(ball), 'img data uri present')
       t.end()
@@ -101,7 +101,7 @@ tape('replacing img urls in css', function (t) {
   fs.readFile(testfile, function (err, buf) {
     if (err) t.end(err)
     t.notOk(/data:image\/\*;base64,/.test(buf), 'img data uri not present')
-    ballify(testfile, function (err, ball) {
+    ballify(testfile, { gzip: false }, function (err, ball) {
       if (err) t.end(err)
       t.ok(/data:image\/\*;base64,/.test(ball), 'img data uri present')
       t.end()
@@ -114,7 +114,7 @@ tape('converting a gif to a base64 representation', function (t) {
   fs.readFile(testfile, function (err, buf) {
     if (err) t.end(err)
     t.notOk(/data:image\/\*;base64,/.test(buf), 'gif data uri not present')
-    ballify(testfile, function (err, ball) {
+    ballify(testfile, { gzip: false }, function (err, ball) {
       if (err) t.end(err)
       t.ok(/data:image\/\*;base64,/.test(ball), 'gif data uri present')
       t.end()
@@ -125,7 +125,7 @@ tape('converting a gif to a base64 representation', function (t) {
 tape('ball name can be set from cli', function (t) {
   var testfile = './testfiles/index.html'
   var outfile = './testfiles/bundle.html'
-  var cmd = 'node old_cli.js ' + testfile + ' ' + outfile
+  var cmd = 'node cli.js ' + testfile + ' -o ' + outfile + ' --gzip=false'
   child.exec(cmd, function (err, stdout, stderr) {
    if (err || stderr) t.end(err || stderr)
    t.ok(fs.existsSync(outfile), 'file should exist')
