@@ -1,7 +1,10 @@
 {
   "name": "ballify",
-  "version": "0.0.0",
-  "description": "bundles styles and scripts into one html ball",
+  "version": "0.9.0",
+  "description": "bundles all front-end assets of SPA into one html ball",
+  "bin": {
+    "ballify": "./cli.js"
+  },
   "main": "index.js",
   "scripts": {
     "test": "tape test.js"
@@ -13,7 +16,8 @@
   "keywords": [
     "bundle",
     "ball",
-    "spa"
+    "spa",
+    "single page application"
   ],
   "author": "Noah Anabiik Schwarz",
   "license": "MIT",
@@ -23,10 +27,11 @@
   "homepage": "https://github.com/chiefbiiko/ballify#readme",
   "dependencies": {
     "follow-redirects": "^1.2.6",
-    "get-pixels": "^3.3.0",
     "minimist": "^1.2.0",
-    "tape": "^4.8.0",
     "uglify-es": "^3.3.5",
     "valid-url": "^1.0.9"
+  },
+  "devDependencies": {
+    "tape": "^4.8.0"
   }
 }
