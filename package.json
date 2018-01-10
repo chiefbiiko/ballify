@@ -1,9 +1,9 @@
 {
   "name": "ballify",
-  "version": "0.9.0",
-  "description": "bundles all front-end assets of SPA into one html ball",
+  "version": "1.0.0",
+  "description": "bundles all front-end assets of a SPA into one html ball",
   "bin": {
-    "ballify": "./cli.js"
+    "ballify": "cli.js"
   },
   "main": "index.js",
   "scripts": {
