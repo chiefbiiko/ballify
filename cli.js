@@ -2,7 +2,7 @@
 
 var fs = require('fs')
 var minimist = require('minimist')
-var ballify = require('./index').ballify
+var ballify = require('./index')
 
 var HELP =
   '\nUsage: ballify [file] [output] [options]' +

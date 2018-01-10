@@ -29,7 +29,7 @@
     "follow-redirects": "^1.2.6",
     "minimist": "^1.2.0",
     "uglify-es": "^3.3.5",
-    "valid-url": "^1.0.9"
+    "url-regex": "^4.1.1"
   },
   "devDependencies": {
     "tape": "^4.8.0"

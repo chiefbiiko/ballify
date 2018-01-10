@@ -1,5 +1,5 @@
 // TODO:
-//   + also ballify fonts that are loaded into the webpage!!!
+//   + ~also ballify google fonts that are loaded into the webpage!!!~
 //   + ~whatabout gif tiff bmp?!~
 //   + ~implement opts - minification!!!~
 //   + ~separate api and cli~
@@ -18,14 +18,20 @@ var path = require('path')
 var zlib = require('zlib')
 var http = require('follow-redirects').http
 var https = require('follow-redirects').https
-var valid = require('valid-url')
 var ugly = require('uglify-es')
+var urlRGX = require('url-regex')
 var crunchifyCSS = require('./crunchify-css/index')
 
-var XRGX = RegExp('^.*(?:"|\')(.+\\.(?:jpg|jpeg|png|svg|gif))(?:"|\').*$', 'i')
+var JSXRGX = RegExp(
+  '^.*(?:"|\')(.+\\.(?:jpg|jpeg|png|svg|gif))(?:"|\').*$', 'i'
+)
+var URLXRGX = RegExp(
+  '^.*url\\((?:"|\')?(.+\\.(?:jpg|jpeg|png|svg|gif|ttf|woff2?))' +
+  '(?:"|\')?\\).*$', 'i'
+)
 var CSSRGX = RegExp(
-  'url\\(\\s*(?:"|\').+' +
-  '\\.(?:jpg|jpeg|JPG|JPEG|png|PNG|svg|SVG|gif|GIF)(?:"|\')\\s*\\)', 'g'
+  'url\\(\\s*(?:"|\')?.+' +
+  '\\.(?:jpg|jpeg|JPG|JPEG|png|PNG|svg|SVG|gif|GIF)(?:"|\')?\\s*\\)', 'g'
 )
 var SCRIPTRGX = RegExp(
   '<script[^>]+src=(?:"|\').+(?:"|\')[^>]*>\s*<\/script>', 'g'
@@ -34,10 +40,16 @@ var IMGRGX = RegExp(
   '<img[^>]+src=(?:"|\').+' +
   '\\.(?:jpg|jpeg|JPG|JPEG|png|PNG|svg|SVG|gif|GIF)(?:"|\')[^>]*>', 'g'
 )
-var LINKRGX = RegExp(
+var CSSLINKRGX = RegExp(
   '(?:<link[^>]+rel=(?:"|\')stylesheet(?:"|\')[^>]+' +
-  'href=(?:"|\').+(?:"|\')[^>]*>)|' +
-  '(?:<link[^>]+href=(?:"|\').+(?:"|\')[^>]+' +
+  'href=(?:"|\').+\\.css(?:"|\')[^>]*>)|' +
+  '(?:<link[^>]+href=(?:"|\').+\\.css(?:"|\')[^>]+' +
+  'rel=(?:"|\')stylesheet(?:"|\')[^>]*>)', 'g'
+)
+var FONTLINKRGX = RegExp(
+  '(?:<link[^>]+rel=(?:"|\')stylesheet(?:"|\')[^>]+' +
+  'href=(?:"|\').+fonts\\.googleapis.+(?:"|\')[^>]*>)|' +
+  '(?:<link[^>]+href=(?:"|\').+fonts\\.googleapis.+(?:"|\')[^>]+' +
   'rel=(?:"|\')stylesheet(?:"|\')[^>]*>)', 'g'
 )
 var IDLRGX = RegExp(
@@ -45,8 +57,8 @@ var IDLRGX = RegExp(
   '\\.(?:jpg|jpeg|JPG|JPEG|png|PNG|svg|SVG|gif|GIF)(?:"|\')', 'g'
 )
 var SETRGX = RegExp(
-  '[^\\d\\s][^\\s]{1,}\.setAttribute\\(\\s*(?:"|\')src(?:"|\'),\\s*(?:"|\').+' +
-  '\\.(?:jpg|jpeg|JPG|JPEG|png|PNG|svg|SVG|gif|GIF)(?:"|\')\\s*\\)', 'g'
+  '[^\\d\\s][^\\s]{1,}\.setAttribute\\(\\s*(?:"|\')src(?:"|\'),\\s*(?:"|\')' +
+  '.+\\.(?:jpg|jpeg|JPG|JPEG|png|PNG|svg|SVG|gif|GIF)(?:"|\')\\s*\\)', 'g'
 )
 
 function noop () {}
@@ -55,29 +67,31 @@ function isBool (x) {
   return x === false || x === true
 }
 
-function problyUnminified (js) {
-  // var CMTRGX = /(?:\/\/|\/\*.*\*\/)/
-  var N = (js.match(/\n/g) || []).length
-  return !(N < (js.length / 160))// || CMTRGX.test(js)
+function problyMinified (code) {
+  return (code.match(/\n/g) || []).length < (code.length / 160)
 }
 
 function pacCSS (css, opts) {
-  if (opts && opts.crunchifyCSS) css = crunchifyCSS(css, opts)
+  if (opts && opts.minifyCSS) css = crunchifyCSS(css, opts)
   return '<style>' + css + '</style>'
 }
 
 function pacJS (js, opts) { // hopefully not minified yet
-  if (opts && opts.uglifyJS && problyUnminified(js)) js = ugly.minify(js).code
+  if (opts && opts.uglifyJS && !problyMinified(js)) js = ugly.minify(js).code
   return '<script>' + js + '</script>'
 }
 
-function buf2Base64ImgDataUri (buf, url) {
-  var type = /\.svg$/i.test(url) ? 'svg+xml' : '*'
-  return 'data:image/' + type + ';base64,' + buf.toString('base64')
+function buf2Base64DataUri (buf, url) {
+  var media = /(?:jpg|jpeg|png|svg|gif)$/i.test(url) ? 'image' : 'font'
+  var type
+  if (/\.svg$/i.test(url)) type = 'svg+xml'
+  else if (media === 'font') type = xext(url)
+  else type = '*'
+  return 'data:' + media + '/' + type + ';base64,' + buf.toString('base64')
 }
 
-function buf2Base64Img (buf, url) {
-  return '<img src="' + buf2Base64ImgDataUri(buf, url) + '" alt="base64-img">'
+function buf2Base64Img (buf, url, alt) {
+  return '<img src="' + buf2Base64DataUri(buf, url) + '" alt="' + alt + '">'
 }
 
 function getIt(mod, url, cb) {
@@ -109,13 +123,25 @@ function xsrc (scr) {
 }
 
 function xyzsrc (stmt) {
-  return stmt.replace(XRGX, '$1')
+  if (urlRGX().test(stmt)) {
+    return stmt.match(urlRGX())[0].replace(/^\(|\)$/, '')
+  } else {
+    return stmt.replace(/url\(/.test(stmt) ? URLXRGX : JSXRGX, '$1')
+  }
+}
+
+function xext (url) {
+  return url.replace(/^.+\.(.+)$/, '$1')
 }
 
 function xurl (el) {
-  if (isLink(el)) return xhref(el)
+  if (isCSSLink(el) || isGoogleFontLink(el)) return xhref(el)
   else if (isImg(el) || isScript(el)) return xsrc(el)
   else return xyzsrc(el)
+}
+
+function xalt (img) {
+  return img.replace(/^.+alt=(?:"|')([^"']+)(?:"|').+$/, '$1')
 }
 
 function isImg (el) {
@@ -126,19 +152,23 @@ function isScript (el) {
   return el.startsWith('<script')
 }
 
-function isLink (el) {
-  return el.startsWith('<link')
+function isCSSLink (el) {
+  return el.startsWith('<link') && /\.css/.test(el)
+}
+
+function isGoogleFontLink (el) {
+  return el.startsWith('<link') && /fonts\.googleapis/.test(el)
 }
 
 function maybeAbs (url, root) { // magic 36 to make sure its not a url
   if (url.startsWith('http') || path.isAbsolute(url)) return url
-  else if (!valid.isUri(url) && url.length < 36) return path.join(root, url)
+  else if (!urlRGX().test(url) && url.length < 36) return path.join(root, url)
   else return url
 }
 
 function imgSrc2Base64ThenPac (buf, el, origin, opts, cb) {
   var txt = buf.toString()
-  var isCSS = isLink(el)
+  var isCSS = isCSSLink(el)
   var all
   if (isCSS) all = txt.match(CSSRGX) || []
   else all = (txt.match(IDLRGX) || []).concat(txt.match(SETRGX) || [])
@@ -153,17 +183,23 @@ function imgSrc2Base64ThenPac (buf, el, origin, opts, cb) {
     var url = maybeAbs(src, path.dirname(origin))
     read(url, function (err, imgbuf) {
       if (err) return cb(err)
-      txt = txt.replace(src, buf2Base64ImgDataUri(imgbuf, url))
-      if (!--pending) {
-        cb(null, isCSS ? pacCSS(txt, opts) : pacJS(txt, opts))
-      }
+      txt = txt.replace(src, buf2Base64DataUri(imgbuf, url))
+      if (!--pending) cb(null, isCSS ? pacCSS(txt, opts) : pacJS(txt, opts))
     })
   })
 
 }
 
-// opts: crunchifyCSS: true, mergeCSS: true, uglifyJS: true, base64Images: true,
-//   crunchHTML=true, gzip: true
+function getThenPacThatGoogleFont (buf, opts, cb) {
+  var fontface = buf.toString()
+  var url = xurl(fontface)
+  var ext = xext(url)
+  read(url, function (err, buf) {
+    if (err) return cb(err)
+    cb(null, pacCSS(fontface.replace(url, buf2Base64DataUri(buf, url)), opts))
+  })
+}
+
 function ballify (index, opts, callback) {
   if (typeof opts === 'function') {
     callback = opts
@@ -177,9 +213,11 @@ function ballify (index, opts, callback) {
   _opts.gzip = isBool(opts.gzip) ? opts.gzip : true
   _opts.base64Images = isBool(opts.base64Images) ? opts.base64Images : true
   _opts.uglifyJS = isBool(opts.uglifyJS) ? opts.uglifyJS : true
-  _opts.crunchifyCSS = isBool(opts.crunchifyCSS) ? opts.crunchifyCSS : true
+  _opts.minifyCSS = isBool(opts.minifyCSS) ? opts.minifyCSS : true
   _opts.merge = isBool(opts.mergeCSS) ? opts.mergeCSS : true
   _opts.crunchHTML = isBool(opts.crunchHTML) ? opts.crunchHTML : true
+  _opts.base64GoogleFonts = isBool(opts.base64GoogleFonts)
+    ? opts.base64GoogleFonts : true
 
   index = path.join(index || 'index.html')
   var root = path.dirname(path.join(__dirname, index))
@@ -197,9 +235,11 @@ function ballify (index, opts, callback) {
       }
     }
 
-    var all = (txt.match(SCRIPTRGX) || [])
-      .concat(txt.match(LINKRGX) || [])
-      .concat(txt.match(IMGRGX) || [])
+    var all = (txt.match(SCRIPTRGX) || []).concat(txt.match(CSSLINKRGX) || [])
+
+    if (_opts.base64Images) all = all.concat(txt.match(IMGRGX) || [])
+    if (_opts.base64GoogleFonts) all = all.concat(txt.match(FONTLINKRGX) || [])
+
     var pending = all.length
 
     if (!pending) return callback(null, txt)
@@ -208,10 +248,12 @@ function ballify (index, opts, callback) {
       var url = maybeAbs(xurl(el), root)
       read(url, function (err, buf) {
         if (err) return callback(err)
-        if (isLink(el) || isScript(el)) {
+        if (isScript(el) || isCSSLink(el)) {
           imgSrc2Base64ThenPac(buf, el, url, _opts, done.bind(null, el))
         } else if (isImg(el)) {
-          done(el, null, _opts.base64Images ? buf2Base64Img(buf, url) : buf)
+          done(el, null, buf2Base64Img(buf, url, xalt(el)))
+        } else if (isGoogleFontLink(el)) {
+          getThenPacThatGoogleFont(buf, _opts, done.bind(null, el))
         }
       })
     })
@@ -220,4 +262,4 @@ function ballify (index, opts, callback) {
 
 }
 
-module.exports = { ballify: ballify, buf2Base64Img: buf2Base64Img }
+module.exports = ballify

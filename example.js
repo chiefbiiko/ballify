@@ -1,6 +1,6 @@
 var child = require('child_process')
 var fs = require('fs')
-var ballify = require('./index').ballify
+var ballify = require('./index')
 
 ballify('testfiles/index99.html', { gzip: false }, function (err, ball) {
   if (err) return console.error(err)
