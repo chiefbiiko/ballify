@@ -23,46 +23,46 @@ var urlRGX = require('url-regex')
 var crunchifyCSS = require('./crunchify-css/index')
 
 var NEWLINE = RegExp('\\n', 'g')
-var FILEEXTENSION = RegExp('^.+\\.(.+)$')
-var IMGEXTENSIONS = RegExp('(?:jpg|jpeg|png|svg|gif)$', 'i')
-var SVGEXTENSION = RegExp('\\.svg$', 'i')
-var ALT = RegExp('^.+alt=(?:"|\')([^"\']+)(?:"|\').+$')
-var TRIMPUNCTUATION = RegExp('^[("\']|[)"\']$', 'g')
-var JSXRGX = RegExp(
+var FILE_EXTENSION = RegExp('^.+\\.(.+)$')
+var IMG_EXTENSIONS = RegExp('(?:jpg|jpeg|png|svg|gif)$', 'i')
+var SVG_EXTENSION = RegExp('\\.svg$', 'i')
+var ALT_ATTR = RegExp('^.+alt=(?:"|\')([^"\']+)(?:"|\').+$')
+var ENDS_PUNCTUATION = RegExp('^[("\']|[)"\']$', 'g')
+var IMG_NAME_JS = RegExp(
   '^.*(?:"|\')(.+\\.(?:jpg|jpeg|png|svg|gif))(?:"|\').*$', 'i'
 )
-var URLXRGX = RegExp(
-  '^.*url\\((?:"|\')?(.+\\.(?:jpg|jpeg|png|svg|gif|ttf|woff2?))' +
-  '(?:"|\')?\\).*$', 'i'
+var FILE_NAME_CSS = RegExp(
+  '^.*url\\(\\s*(?:"|\')?(.+\\.(?:jpg|jpeg|png|svg|gif|ttf|woff2?))' +
+  '(?:"|\')?\\s*\\).*$', 'i'
 )
-var CSSRGX = RegExp(
+var IMG_SRCS_CSS = RegExp(
   'url\\(\\s*(?:"|\')?.+' +
   '\\.(?:jpg|jpeg|JPG|JPEG|png|PNG|svg|SVG|gif|GIF)(?:"|\')?\\s*\\)', 'g'
 )
-var SCRIPTRGX = RegExp(
+var SCRIPTS = RegExp(
   '<script[^>]+src=(?:"|\').+(?:"|\')[^>]*>\s*<\/script>', 'g'
 )
-var IMGRGX = RegExp(
+var IMGS = RegExp(
   '<img[^>]+src=(?:"|\').+' +
   '\\.(?:jpg|jpeg|JPG|JPEG|png|PNG|svg|SVG|gif|GIF)(?:"|\')[^>]*>', 'g'
 )
-var CSSLINKRGX = RegExp(
+var CSS_LINKS = RegExp(
   '(?:<link[^>]+rel=(?:"|\')stylesheet(?:"|\')[^>]+' +
   'href=(?:"|\').+\\.css(?:"|\')[^>]*>)|' +
   '(?:<link[^>]+href=(?:"|\').+\\.css(?:"|\')[^>]+' +
   'rel=(?:"|\')stylesheet(?:"|\')[^>]*>)', 'g'
 )
-var FONTLINKRGX = RegExp(
+var GOOGLE_FONT_LINKS = RegExp(
   '(?:<link[^>]+rel=(?:"|\')stylesheet(?:"|\')[^>]+' +
   'href=(?:"|\').+fonts\\.googleapis.+(?:"|\')[^>]*>)|' +
   '(?:<link[^>]+href=(?:"|\').+fonts\\.googleapis.+(?:"|\')[^>]+' +
   'rel=(?:"|\')stylesheet(?:"|\')[^>]*>)', 'g'
 )
-var IDLRGX = RegExp(
+var IDL_SRCS_JS = RegExp(
   '[^\\d\\s][^\\s]{1,}\\.src\\s*=\\s*(?:"|\').+' +
   '\\.(?:jpg|jpeg|JPG|JPEG|png|PNG|svg|SVG|gif|GIF)(?:"|\')', 'g'
 )
-var SETRGX = RegExp(
+var SET_SRCS_JS = RegExp(
   '[^\\d\\s][^\\s]{1,}\.setAttribute\\(\\s*(?:"|\')src(?:"|\'),\\s*(?:"|\')' +
   '.+\\.(?:jpg|jpeg|JPG|JPEG|png|PNG|svg|SVG|gif|GIF)(?:"|\')\\s*\\)', 'g'
 )
@@ -88,9 +88,9 @@ function pacJS (js, opts) { // hopefully not minified yet
 }
 
 function buf2Base64DataUri (buf, url) {
-  var media = IMGEXTENSIONS.test(url) ? 'image' : 'font'
+  var media = IMG_EXTENSIONS.test(url) ? 'image' : 'font'
   var type
-  if (SVGEXTENSION.test(url)) type = 'svg+xml'
+  if (SVG_EXTENSION.test(url)) type = 'svg+xml'
   else if (media === 'font') type = xext(url)
   else type = '*'
   return 'data:' + media + '/' + type + ';base64,' + buf.toString('base64')
@@ -130,14 +130,14 @@ function xsrc (scr) {
 
 function xyzsrc (stmt) {
   if (urlRGX().test(stmt)) {
-    return stmt.match(urlRGX())[0].replace(TRIMPUNCTUATION, '')
+    return stmt.match(urlRGX())[0].replace(ENDS_PUNCTUATION, '')
   } else {
-    return stmt.replace(/url\(/.test(stmt) ? URLXRGX : JSXRGX, '$1')
+    return stmt.replace(/url\(/.test(stmt) ? FILE_NAME_CSS : IMG_NAME_JS, '$1')
   }
 }
 
 function xext (url) {
-  return url.replace(FILEEXTENSION, '$1')
+  return url.replace(FILE_EXTENSION, '$1')
 }
 
 function xurl (el) {
@@ -147,7 +147,7 @@ function xurl (el) {
 }
 
 function xalt (img) {
-  return img.replace(ALT, '$1')
+  return img.replace(ALT_ATTR, '$1')
 }
 
 function isImg (el) {
@@ -176,8 +176,8 @@ function imgSrc2Base64ThenPac (buf, el, origin, opts, cb) {
   var txt = buf.toString()
   var isCSS = isCSSLink(el)
   var all
-  if (isCSS) all = txt.match(CSSRGX) || []
-  else all = (txt.match(IDLRGX) || []).concat(txt.match(SETRGX) || [])
+  if (isCSS) all = txt.match(IMG_SRCS_CSS) || []
+  else all = (txt.match(IDL_SRCS_JS) || []).concat(txt.match(SET_SRCS_JS) || [])
   var pending = all.length
 
   if (!opts.base64Images || !pending) {
@@ -241,10 +241,10 @@ function ballify (index, opts, callback) {
       }
     }
 
-    var all = (txt.match(SCRIPTRGX) || []).concat(txt.match(CSSLINKRGX) || [])
+    var all = (txt.match(SCRIPTS) || []).concat(txt.match(CSS_LINKS) || [])
 
-    if (_opts.base64Images) all = all.concat(txt.match(IMGRGX) || [])
-    if (_opts.base64GoogleFonts) all = all.concat(txt.match(FONTLINKRGX) || [])
+    if (_opts.base64Images) all = all.concat(txt.match(IMGS) || [])
+    if (_opts.base64GoogleFonts) all = all.concat(txt.match(GOOGLE_FONT_LINKS) || [])
 
     var pending = all.length
 
