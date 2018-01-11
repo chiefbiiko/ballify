@@ -22,6 +22,12 @@ var ugly = require('uglify-es')
 var urlRGX = require('url-regex')
 var crunchifyCSS = require('./crunchify-css/index')
 
+var NEWLINE = RegExp('\\n', 'g')
+var FILEEXTENSION = RegExp('^.+\\.(.+)$')
+var IMGEXTENSIONS = RegExp('(?:jpg|jpeg|png|svg|gif)$', 'i')
+var SVGEXTENSION = RegExp('\\.svg$', 'i')
+var ALT = RegExp('^.+alt=(?:"|\')([^"\']+)(?:"|\').+$')
+var TRIMPUNCTUATION = RegExp('^[("\']|[)"\']$', 'g')
 var JSXRGX = RegExp(
   '^.*(?:"|\')(.+\\.(?:jpg|jpeg|png|svg|gif))(?:"|\').*$', 'i'
 )
@@ -68,7 +74,7 @@ function isBool (x) {
 }
 
 function problyMinified (code) {
-  return (code.match(/\n/g) || []).length < (code.length / 160)
+  return (code.match(NEWLINE) || []).length < (code.length / 160)
 }
 
 function pacCSS (css, opts) {
@@ -82,9 +88,9 @@ function pacJS (js, opts) { // hopefully not minified yet
 }
 
 function buf2Base64DataUri (buf, url) {
-  var media = /(?:jpg|jpeg|png|svg|gif)$/i.test(url) ? 'image' : 'font'
+  var media = IMGEXTENSIONS.test(url) ? 'image' : 'font'
   var type
-  if (/\.svg$/i.test(url)) type = 'svg+xml'
+  if (SVGEXTENSION.test(url)) type = 'svg+xml'
   else if (media === 'font') type = xext(url)
   else type = '*'
   return 'data:' + media + '/' + type + ';base64,' + buf.toString('base64')
@@ -124,14 +130,14 @@ function xsrc (scr) {
 
 function xyzsrc (stmt) {
   if (urlRGX().test(stmt)) {
-    return stmt.match(urlRGX())[0].replace(/^\(|\)$/, '')
+    return stmt.match(urlRGX())[0].replace(TRIMPUNCTUATION, '')
   } else {
     return stmt.replace(/url\(/.test(stmt) ? URLXRGX : JSXRGX, '$1')
   }
 }
 
 function xext (url) {
-  return url.replace(/^.+\.(.+)$/, '$1')
+  return url.replace(FILEEXTENSION, '$1')
 }
 
 function xurl (el) {
@@ -141,7 +147,7 @@ function xurl (el) {
 }
 
 function xalt (img) {
-  return img.replace(/^.+alt=(?:"|')([^"']+)(?:"|').+$/, '$1')
+  return img.replace(ALT, '$1')
 }
 
 function isImg (el) {
