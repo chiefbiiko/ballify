@@ -1,5 +1,10 @@
 #!/usr/bin/env node
 
+// TODO:
+//   + add -h --help itself to HELP
+//   + implement -v --version and add to HELP
+//   + add a local dev server with watchify
+
 var fs = require('fs')
 var minimist = require('minimist')
 var ballify = require('./index')
@@ -12,6 +17,7 @@ var HELP =
   '\n\nOptions:' +
   '\n  --gzip\t\tgzip the ball?' +
   '\n  --base64Images\tconvert images to base64?' +
+  '\n  --base64GoogleFonts\tconvert GFonts links to inline base64 fonts?' +
   '\n  --uglifyJS\t\tminify JS?' +
   '\n  --crunchifyCSS\tminify CSS?' +
   '\n  --mergeCSS\t\tmerge recurring CSS selectors when minifying CSS?' +
@@ -21,23 +27,26 @@ var HELP =
   '\n  To disable any of them do "--<option>=false" or "--<option> false"'
 
 var argv = minimist(process.argv.slice(2), { string: [ 'o', 'output' ] })
+if (argv.help || argv.h) return console.log(HELP)
+
 var opts = {
   gzip: argv.gzip !== 'false',
   base64Images: argv.base64Images !== 'false',
+  base64GoogleFonts: argv.base64GoogleFonts !== 'false',
   uglifyJS: argv.uglifyJS !== 'false',
   crunchifyCSS: argv.crunchifyCSS !== 'false',
   mergeCSS: argv.mergeCSS !== 'false',
   crunchHTML: argv.crunchHTML !== 'false'
 }
+
 var input = argv._[0]
 var output = argv._[1] || argv.o || argv.out || argv.output || 'ball.html'
 if (opts.gzip) output += '.gz'
-if (argv.help || argv.h) return console.log(HELP)
 
 ballify(input, opts, function (err, ball) {
   if (err) return console.error(err)
   fs.writeFile(output, ball, function (err) {
     if (err) return console.error(err)
-    console.log('just finished balling ' + output + '...')
+    console.log('just got done ballifying ' + output + '...')
   })
 })

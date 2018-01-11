@@ -1,5 +1,6 @@
 // TODO:
 //   + fix BUG: destroying original img element
+//   + allow brotli compression
 //   + ~also ballify google fonts that are loaded into the webpage!!!~
 //   + ~whatabout gif tiff bmp?!~
 //   + ~implement opts - minification!!!~
@@ -20,8 +21,8 @@ var zlib = require('zlib')
 var http = require('follow-redirects').http
 var https = require('follow-redirects').https
 var ugly = require('uglify-es')
-var urlRGX = require('url-regex')
 var crunchifyCSS = require('./crunchify-css/index')
+var URL = require('url-regex')()
 
 var NEWLINE = RegExp('\\n', 'g')
 var HTML_WHITESPACE = RegExp('>\\s+<', 'g')
@@ -33,7 +34,7 @@ var GFONT_APIS = RegExp('fonts\\.googleapis')
 var HREF = RegExp('^.+href=.([^\\s\'"]+).+$')
 var SRC = RegExp('^.+src=.([^\\s\'"]+).+$')
 var ALT_ATTR = RegExp('^.+alt=(?:"|\')([^"\']+)(?:"|\').+$')
-var URL_CSS = RegExp('url\\(')
+var URL__ = RegExp('url\\(')
 var ENDS_PUNCTUATION = RegExp('^[("\']|[)"\']$', 'g')
 var IMG_NAME_JS = RegExp(
   '^.*(?:"|\')(.+\\.(?:jpg|jpeg|png|svg|gif))(?:"|\').*$', 'i'
@@ -136,10 +137,10 @@ function extractSrc (scr) {
 }
 
 function try2extractSrc (stmt) {
-  if (urlRGX().test(stmt)) {
-    return stmt.match(urlRGX())[0].replace(ENDS_PUNCTUATION, '')
+  if (URL.test(stmt)) {
+    return stmt.match(URL)[0].replace(ENDS_PUNCTUATION, '')
   } else {
-    return stmt.replace(URL_CSS.test(stmt) ? FILE_NAME_CSS : IMG_NAME_JS, '$1')
+    return stmt.replace(URL__.test(stmt) ? FILE_NAME_CSS : IMG_NAME_JS, '$1')
   }
 }
 
@@ -175,7 +176,7 @@ function isGoogleFontLink (el) {
 
 function maybeAbs (url, root) { // magic 36 to make sure its not a url
   if (url.startsWith('http') || path.isAbsolute(url)) return url
-  else if (!urlRGX().test(url) && url.length < 36) return path.join(root, url)
+  else if (!URL.test(url) && url.length < 36) return path.join(root, url)
   else return url
 }
 

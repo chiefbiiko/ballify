@@ -63,6 +63,7 @@ Ballify a `HTML` file. The callback has the signature `callback(err, ball)`, wit
 {
   gzip: true, // gzip the final ball?
   base64Images: true, // convert image references to base64 data uris?
+  base64GoogleFonts: true, // convert Google Font links to base64 inline fonts?
   minifyCSS: true, // remove unnecessary whitespace from CSS?
   mergeCSS: true, // merge recurring selectors within CSS?
   crunchHTML: true // remove unnecessary whitespace from HTML?
