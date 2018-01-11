@@ -1,4 +1,5 @@
 // TODO:
+//   + fix BUG: destroying original img element
 //   + ~also ballify google fonts that are loaded into the webpage!!!~
 //   + ~whatabout gif tiff bmp?!~
 //   + ~implement opts - minification!!!~
@@ -23,10 +24,16 @@ var urlRGX = require('url-regex')
 var crunchifyCSS = require('./crunchify-css/index')
 
 var NEWLINE = RegExp('\\n', 'g')
+var HTML_WHITESPACE = RegExp('>\\s+<', 'g')
 var FILE_EXTENSION = RegExp('^.+\\.(.+)$')
 var IMG_EXTENSIONS = RegExp('(?:jpg|jpeg|png|svg|gif)$', 'i')
 var SVG_EXTENSION = RegExp('\\.svg$', 'i')
+var DOT_CSS = RegExp('\\.css')
+var GFONT_APIS = RegExp('fonts\\.googleapis')
+var HREF = RegExp('^.+href=.([^\\s\'"]+).+$')
+var SRC = RegExp('^.+src=.([^\\s\'"]+).+$')
 var ALT_ATTR = RegExp('^.+alt=(?:"|\')([^"\']+)(?:"|\').+$')
+var URL_CSS = RegExp('url\\(')
 var ENDS_PUNCTUATION = RegExp('^[("\']|[)"\']$', 'g')
 var IMG_NAME_JS = RegExp(
   '^.*(?:"|\')(.+\\.(?:jpg|jpeg|png|svg|gif))(?:"|\').*$', 'i'
@@ -52,17 +59,17 @@ var CSS_LINKS = RegExp(
   '(?:<link[^>]+href=(?:"|\').+\\.css(?:"|\')[^>]+' +
   'rel=(?:"|\')stylesheet(?:"|\')[^>]*>)', 'g'
 )
-var GOOGLE_FONT_LINKS = RegExp(
+var GFONT_LINKS = RegExp(
   '(?:<link[^>]+rel=(?:"|\')stylesheet(?:"|\')[^>]+' +
   'href=(?:"|\').+fonts\\.googleapis.+(?:"|\')[^>]*>)|' +
   '(?:<link[^>]+href=(?:"|\').+fonts\\.googleapis.+(?:"|\')[^>]+' +
   'rel=(?:"|\')stylesheet(?:"|\')[^>]*>)', 'g'
 )
-var IDL_SRCS_JS = RegExp(
+var IDL_SRCS = RegExp(
   '[^\\d\\s][^\\s]{1,}\\.src\\s*=\\s*(?:"|\').+' +
   '\\.(?:jpg|jpeg|JPG|JPEG|png|PNG|svg|SVG|gif|GIF)(?:"|\')', 'g'
 )
-var SET_SRCS_JS = RegExp(
+var SET_SRCS = RegExp(
   '[^\\d\\s][^\\s]{1,}\.setAttribute\\(\\s*(?:"|\')src(?:"|\'),\\s*(?:"|\')' +
   '.+\\.(?:jpg|jpeg|JPG|JPEG|png|PNG|svg|SVG|gif|GIF)(?:"|\')\\s*\\)', 'g'
 )
@@ -91,7 +98,7 @@ function buf2Base64DataUri (buf, url) {
   var media = IMG_EXTENSIONS.test(url) ? 'image' : 'font'
   var type
   if (SVG_EXTENSION.test(url)) type = 'svg+xml'
-  else if (media === 'font') type = xext(url)
+  else if (media === 'font') type = extractExtension(url)
   else type = '*'
   return 'data:' + media + '/' + type + ';base64,' + buf.toString('base64')
 }
@@ -120,33 +127,33 @@ function read (file, cb) {
   fs.existsSync(file) ? fs.readFile(file, cb) : get(file, cb)
 }
 
-function xhref (link) {
-  return link.replace(/^.+href=.([^\s'"]+).+$/, '$1')
+function extractHref (link) {
+  return link.replace(HREF, '$1')
 }
 
-function xsrc (scr) {
-  return scr.replace(/^.+src=.([^\s'"]+).+$/, '$1')
+function extractSrc (scr) {
+  return scr.replace(SRC, '$1')
 }
 
-function xyzsrc (stmt) {
+function try2extractSrc (stmt) {
   if (urlRGX().test(stmt)) {
     return stmt.match(urlRGX())[0].replace(ENDS_PUNCTUATION, '')
   } else {
-    return stmt.replace(/url\(/.test(stmt) ? FILE_NAME_CSS : IMG_NAME_JS, '$1')
+    return stmt.replace(URL_CSS.test(stmt) ? FILE_NAME_CSS : IMG_NAME_JS, '$1')
   }
 }
 
-function xext (url) {
+function extractExtension (url) {
   return url.replace(FILE_EXTENSION, '$1')
 }
 
-function xurl (el) {
-  if (isCSSLink(el) || isGoogleFontLink(el)) return xhref(el)
-  else if (isImg(el) || isScript(el)) return xsrc(el)
-  else return xyzsrc(el)
+function extractUrl (el) {
+  if (isCSSLink(el) || isGoogleFontLink(el)) return extractHref(el)
+  else if (isImg(el) || isScript(el)) return extractSrc(el)
+  else return try2extractSrc(el)
 }
 
-function xalt (img) {
+function extractAlt (img) {
   return img.replace(ALT_ATTR, '$1')
 }
 
@@ -159,11 +166,11 @@ function isScript (el) {
 }
 
 function isCSSLink (el) {
-  return el.startsWith('<link') && /\.css/.test(el)
+  return el.startsWith('<link') && DOT_CSS.test(el)
 }
 
 function isGoogleFontLink (el) {
-  return el.startsWith('<link') && /fonts\.googleapis/.test(el)
+  return el.startsWith('<link') && GFONT_APIS.test(el)
 }
 
 function maybeAbs (url, root) { // magic 36 to make sure its not a url
@@ -177,7 +184,7 @@ function imgSrc2Base64ThenPac (buf, el, origin, opts, cb) {
   var isCSS = isCSSLink(el)
   var all
   if (isCSS) all = txt.match(IMG_SRCS_CSS) || []
-  else all = (txt.match(IDL_SRCS_JS) || []).concat(txt.match(SET_SRCS_JS) || [])
+  else all = (txt.match(IDL_SRCS) || []).concat(txt.match(SET_SRCS) || [])
   var pending = all.length
 
   if (!opts.base64Images || !pending) {
@@ -185,7 +192,7 @@ function imgSrc2Base64ThenPac (buf, el, origin, opts, cb) {
   }
 
   all.forEach(function (stmt) {
-    var src = xurl(stmt)
+    var src = extractUrl(stmt)
     var url = maybeAbs(src, path.dirname(origin))
     read(url, function (err, imgbuf) {
       if (err) return cb(err)
@@ -198,15 +205,14 @@ function imgSrc2Base64ThenPac (buf, el, origin, opts, cb) {
 
 function getThenPacThatGoogleFont (buf, opts, cb) {
   var fontface = buf.toString()
-  var url = xurl(fontface)
-  var ext = xext(url)
+  var url = extractUrl(fontface)
   read(url, function (err, buf) {
     if (err) return cb(err)
     cb(null, pacCSS(fontface.replace(url, buf2Base64DataUri(buf, url)), opts))
   })
 }
 
-function ballify (index, opts, callback) {
+function ballify (file, opts, callback) {
   if (typeof opts === 'function') {
     callback = opts
     opts = {}
@@ -225,17 +231,17 @@ function ballify (index, opts, callback) {
   _opts.base64GoogleFonts = isBool(opts.base64GoogleFonts)
     ? opts.base64GoogleFonts : true
 
-  index = path.join(index || 'index.html')
-  var root = path.dirname(path.join(__dirname, index))
+  file = path.join(file || 'index.html')
+  var root = path.dirname(path.join(__dirname, file))
 
-  fs.readFile(index, 'utf8', function (err, txt) {
+  fs.readFile(file, 'utf8', function (err, txt) {
     if (err) return callback(err)
 
     function done (el, err, pac) {
       if (err) return callback(err)
       txt = txt.replace(el, pac)
       if (!--pending) {
-        if (_opts.crunchHTML) txt = txt.replace(/>\s+</g, '><').trim()
+        if (_opts.crunchHTML) txt = txt.replace(HTML_WHITESPACE, '><').trim()
         if (_opts.gzip) return zlib.gzip(Buffer.from(txt), callback)
 	      callback(null, Buffer.from(txt))
       }
@@ -244,20 +250,20 @@ function ballify (index, opts, callback) {
     var all = (txt.match(SCRIPTS) || []).concat(txt.match(CSS_LINKS) || [])
 
     if (_opts.base64Images) all = all.concat(txt.match(IMGS) || [])
-    if (_opts.base64GoogleFonts) all = all.concat(txt.match(GOOGLE_FONT_LINKS) || [])
+    if (_opts.base64GoogleFonts) all = all.concat(txt.match(GFONT_LINKS) || [])
 
     var pending = all.length
 
     if (!pending) return callback(null, txt)
 
     all.forEach(function (el) {
-      var url = maybeAbs(xurl(el), root)
+      var url = maybeAbs(extractUrl(el), root)
       read(url, function (err, buf) {
         if (err) return callback(err)
         if (isScript(el) || isCSSLink(el)) {
           imgSrc2Base64ThenPac(buf, el, url, _opts, done.bind(null, el))
-        } else if (isImg(el)) {
-          done(el, null, buf2Base64Img(buf, url, xalt(el)))
+        } else if (isImg(el)) { // BUG: DESTROYING ORIGINAL IMG ELEMENT!!!
+          done(el, null, buf2Base64Img(buf, url, extractAlt(el)))
         } else if (isGoogleFontLink(el)) {
           getThenPacThatGoogleFont(buf, _opts, done.bind(null, el))
         }
