@@ -1,6 +1,6 @@
 {
   "name": "ballify",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "bundles all front-end assets of a SPA into one html ball",
   "bin": {
     "ballify": "cli.js"
@@ -14,6 +14,9 @@
     "url": "git+https://github.com/chiefbiiko/ballify.git"
   },
   "keywords": [
+    "build tool",
+    "devops",
+    "utility",
     "bundle",
     "ball",
     "spa",
