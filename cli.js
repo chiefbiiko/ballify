@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 // TODO:
-//   + add a local dev server with watchify
+//   + http2 devserver that pushes onchange of any assets
 
 var fs = require('fs')
 var http = require('http')
