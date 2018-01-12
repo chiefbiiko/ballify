@@ -49,7 +49,7 @@ ballify('index.html', function (err, ball) {
 })
 ```
 
-The *ball* is gzipped by default. Set `opts.gzip` to `false` to prevent compression, see below.
+The *ball* is `brotli`-compressed by default. Set `opts.brotli` and `opts.gzip` to `false` to prevent compression, see below.
 
 ***
 
@@ -61,7 +61,8 @@ Ballify a `HTML` file. The callback has the signature `callback(err, ball)`, wit
 
 ``` js
 {
-  gzip: true, // gzip the final ball?
+  brotli: true // compress the final ball with brotli?
+  gzip: false, // gzip the final ball?
   base64Images: true, // convert image references to base64 data uris?
   base64GoogleFonts: true, // convert Google Font links to base64 inline fonts?
   minifyCSS: true, // remove unnecessary whitespace from CSS?
@@ -69,6 +70,8 @@ Ballify a `HTML` file. The callback has the signature `callback(err, ball)`, wit
   crunchHTML: true // remove unnecessary whitespace from HTML?
 }
 ```
+
+Note that `ballify` treats `brotli` and `gzip` as mutually exclusive, meaning you can either use one or the other but not both.
 
 ***
 

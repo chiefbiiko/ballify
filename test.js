@@ -2,6 +2,8 @@ var tape = require('tape')
 var fs = require('fs')
 var path = require('path')
 var child = require('child_process')
+var zlib = require('zlib')
+var unbrotli = require('iltorb').decompress
 
 var ballify = require('./index')
 
@@ -11,7 +13,7 @@ function problyMinified (code) {
 
 tape('ball should not contain any more external references', function (t) {
   var testfile = './testfiles/index.html'
-  ballify(testfile, { gzip: false }, function (err, ball) {
+  ballify(testfile, { brotli: false }, function (err, ball) {
     if (err) t.end(err)
     t.false(/rel="stylesheet"/i.test(ball), 'no more style links')
     t.false(/<script\s+src=".+">/i.test(ball), 'no more external js')
@@ -24,7 +26,7 @@ tape('getting a url', function (t) {
   fs.readFile(testfile, function (err, buf) {
     if (err) t.end(err)
     t.true(/<script.*><\/script>/.test(buf), 'empty script')
-    ballify(testfile, { gzip: false }, function (err, ball) {
+    ballify(testfile, { brotli: false }, function (err, ball) {
       if (err) t.end(err)
       t.true(/<script.*>.+<\/script>/.test(ball), 'full script')
       t.true(ball.length > 1000, 'rily there')
@@ -38,7 +40,7 @@ tape('only empty scripts are replaced', function (t) {
   fs.readFile(testfile, function (err, buf) {
     if (err) t.end(err)
     t.true(/<script.*>1\+1<\/script>/.test(buf), 'dumb script there')
-    ballify(testfile, { gzip: false }, function (err, ball) {
+    ballify(testfile, { brotli: false }, function (err, ball) {
       if (err) t.end(err)
       t.true(/<script.*>1\+1<\/script>/.test(ball), 'dumb script there still')
       t.end()
@@ -51,7 +53,7 @@ tape('non "https?"-prefixed urls', function (t) {
   fs.readFile(testfile, function (err, buf) {
     if (err) t.end(err)
     t.false(/<script[^>]*>.+<\/script>/.test(buf), 'no full script')
-    ballify(testfile, { gzip: false }, function (err, ball) {
+    ballify(testfile, { brotli: false }, function (err, ball) {
       if (err) t.end(err)
       t.true(/<script[^>]*>.+<\/script>/.test(ball), 'full script')
       t.end()
@@ -64,7 +66,7 @@ tape('replacing img src in html', function (t) {
   fs.readFile(testfile, function (err, buf) {
     if (err) t.end(err)
     t.false(/<img src="data.+"/.test(buf), 'img data uri not present')
-    ballify(testfile, { gzip: false }, function (err, ball) {
+    ballify(testfile, { brotli: false }, function (err, ball) {
       if (err) t.end(err)
       t.true(/<img src="data.+"/.test(ball), 'img data uri present')
       t.end()
@@ -78,7 +80,7 @@ tape('replacing img sources in js', function (t) {
     if (err) t.end(err)
     t.false(/data:image\/\*;base64,/.test(buf), 'img data uri not present')
     t.false(/data:image\/svg\+xml;base64,/.test(buf), 'no svg data uri')
-    ballify(testfile, { gzip: false }, function (err, ball) {
+    ballify(testfile, { brotli: false }, function (err, ball) {
       if (err) t.end(err)
       t.true(/data:image\/\*;base64,/.test(ball), 'img data uri present')
       t.true(/data:image\/svg\+xml;base64,/.test(ball), 'svg data uri present')
@@ -92,7 +94,7 @@ tape('in-html svg img to base 64 img', function (t) {
   fs.readFile(testfile, function (err, buf) {
     if (err) t.end(err)
     t.false(/data:image\/svg\+xml;base64,/.test(buf), 'no img data uri')
-    ballify(testfile, { gzip: false }, function (err, ball) {
+    ballify(testfile, { brotli: false }, function (err, ball) {
       if (err) t.end(err)
       t.true(/data:image\/svg\+xml;base64,/.test(ball), 'img data uri present')
       t.end()
@@ -105,7 +107,7 @@ tape('replacing img urls in css', function (t) {
   fs.readFile(testfile, function (err, buf) {
     if (err) t.end(err)
     t.false(/data:image\/\*;base64,/.test(buf), 'img data uri not present')
-    ballify(testfile, { gzip: false }, function (err, ball) {
+    ballify(testfile, { brotli: false }, function (err, ball) {
       if (err) t.end(err)
       t.true(/data:image\/\*;base64,/.test(ball), 'img data uri present')
       t.end()
@@ -118,7 +120,7 @@ tape('converting a gif to a base64 representation', function (t) {
   fs.readFile(testfile, function (err, buf) {
     if (err) t.end(err)
     t.false(/data:image\/\*;base64,/.test(buf), 'gif data uri not present')
-    ballify(testfile, { gzip: false }, function (err, ball) {
+    ballify(testfile, { brotli: false }, function (err, ball) {
       if (err) t.end(err)
       t.true(/data:image\/\*;base64,/.test(ball), 'gif data uri present')
       t.end()
@@ -129,7 +131,8 @@ tape('converting a gif to a base64 representation', function (t) {
 tape('ball name can be set from cli', function (t) {
   var testfile = './testfiles/index.html'
   var outfile = './testfiles/bundle.html'
-  var cmd = 'node cli.js ' + testfile + ' -o ' + outfile + ' --gzip=false'
+  var cmd = 'node cli.js ' + testfile + ' -o ' + outfile +
+    ' --brotli=false --gzip=false'
   child.exec(cmd, function (err, stdout, stderr) {
    if (err || stderr) t.end(err || stderr)
    t.true(fs.existsSync(outfile), 'file should exist')
@@ -145,7 +148,7 @@ tape('replacing img urls in css that do not have quotes', function (t) {
   fs.readFile(testfile, function (err, buf) {
     if (err) t.end(err)
     t.false(/data:image\/\*;base64,/.test(buf), 'img data uri not present')
-    ballify(testfile, { gzip: false }, function (err, ball) {
+    ballify(testfile, { brotli: false }, function (err, ball) {
       if (err) t.end(err)
       t.true(/data:image\/\*;base64,/.test(ball), 'img data uri present')
       t.end()
@@ -158,7 +161,7 @@ tape('getting fonts from Google', function (t) {
   fs.readFile(testfile, function (err, buf) {
     if (err) t.end(err)
     t.false(/data:font\/.+;base64,/.test(buf), 'no font data uri')
-    ballify(testfile, { gzip: false }, function (err, ball) {
+    ballify(testfile, { brotli: false }, function (err, ball) {
       if (err) t.end(err)
       t.true(/data:font\/.+;base64,/.test(ball), 'font data uri there')
       t.end()
@@ -168,11 +171,12 @@ tape('getting fonts from Google', function (t) {
 
 tape('disabling css minification', function (t) {
   var testfile = 'testfiles/index.html'
+  var opts = { brotli: false, minifyCSS: false }
   fs.readFile(testfile, 'utf8', function (err, txt) {
     if (err) t.end(err)
     var cssA = txt.replace(/^.+<style>(.+)<\/style>.+$/, '$1')
     t.false(problyMinified(cssA), 'css is not minified before balling')
-    ballify(testfile, { gzip: false, minifyCSS: false }, function (err, ball) {
+    ballify(testfile, opts, function (err, ball) {
       if (err) t.end(err)
       var cssB = ball.toString().replace(/^.+<style>(.+)<\/style>.+$/, '$1')
       t.false(problyMinified(cssB), 'css is not minified after balling')
@@ -185,7 +189,7 @@ tape('disabling js minification from cli', function (t) {
   var testfile = 'testfiles/index.html'
   var outfile = 'testfiles/bundle.html'
   var cmd = 'node cli ' + testfile + ' --output ' + outfile +
-            ' --gzip=false --uglifyJS=false'
+            ' --brotli=false --gzip=false --uglifyJS=false'
   child.exec(cmd, function (err, stdout, stderr) {
     if (err || stderr) t.end(err || stderr)
     fs.readFile(outfile, 'utf8', function (err, txt) {
@@ -202,7 +206,7 @@ tape('disabling js minification from cli', function (t) {
 
 tape('disabling ballifying Google Fonts', function (t) {
   var testfile = 'testfiles/index12.html'
-  var opts = { gzip: false, base64GoogleFonts: false }
+  var opts = { brotli: false, base64GoogleFonts: false }
   fs.readFile(testfile, function (err, buf) {
     if (err) t.end(err)
     t.false(/data:font\/.+;base64,/.test(buf), 'no font data uri')
@@ -218,12 +222,42 @@ tape('preserving inline img attributes', function (t) {
   var testfile = 'testfiles/index13.html'
   fs.readFile(testfile, function (err, buf) {
     if (err) t.end(err)
-    t.true(/<img\sid="pic"/, 'img id there')
-    ballify(testfile, { gzip: false }, function (err, ball) {
+    t.true(/<img\sid="pic"/.test(buf), 'img id there')
+    ballify(testfile, { brotli: false }, function (err, ball) {
       if (err) t.end(err)
       t.true(/data:image\/.+;base64,/.test(ball), 'img data uri there')
       t.true(/<img\sid="pic"/.test(ball), 'img id there')
       t.end()
+    })
+  })
+})
+
+tape('lossless gzip compression', function (t) {
+  var testfile = 'testfiles/index99.html'
+  ballify(testfile, { gzip: true, brotli: false }, function (err, gzip) {
+    if (err) t.end(err)
+    ballify(testfile, { brotli: false }, function (err, nogzip) {
+      if (err) t.end(err)
+      zlib.gunzip(gzip, function (err, gunzip) {
+        if (err) t.end(err)
+        t.true(gunzip.equals(nogzip), 'lossless gzip')
+        t.end()
+      })
+    })
+  })
+})
+
+tape('lossless brotli compression', function (t) {
+  var testfile = 'testfiles/index99.html'
+  ballify(testfile, { brotli: true }, function (err, brot) {
+    if (err) t.end(err)
+    ballify(testfile, { brotli: false }, function (err, nobrot) {
+      if (err) t.end(err)
+      unbrotli(brot, function (err, unbrot) {
+        if (err) t.end(err)
+        t.true(unbrot.equals(nobrot), 'lossless brotli')
+        t.end()
+      })
     })
   })
 })

@@ -1,6 +1,6 @@
 // TODO:
 //   + ~fixd: destroying original img element~
-//   + allow brotli compression
+//   + ~allow brotli compression~
 //   + ~also ballify google fonts that are loaded into the webpage!!!~
 //   + ~whatabout gif tiff bmp?!~
 //   + ~implement opts - minification!!!~
@@ -17,6 +17,7 @@
 
 var fs = require('fs')
 var path = require('path')
+var brotli = require('iltorb').compress
 var zlib = require('zlib')
 var http = require('follow-redirects').http
 var https = require('follow-redirects').https
@@ -214,7 +215,8 @@ function ballify (file, opts, callback) {
   if (!opts) opts = {}
 
   var _opts = {}
-  _opts.gzip = isBool(opts.gzip) ? opts.gzip : true
+  _opts.brotli = isBool(opts.brotli) ? opts.brotli : true
+  _opts.gzip = _opts.brotli ? false : isBool(opts.gzip) ? opts.gzip : false
   _opts.base64Images = isBool(opts.base64Images) ? opts.base64Images : true
   _opts.uglifyJS = isBool(opts.uglifyJS) ? opts.uglifyJS : true
   _opts.minifyCSS = isBool(opts.minifyCSS) ? opts.minifyCSS : true
@@ -234,7 +236,8 @@ function ballify (file, opts, callback) {
       txt = txt.replace(el, pac)
       if (!--pending) {
         if (_opts.crunchHTML) txt = txt.replace(HTML_WHITESPACE, '><').trim()
-        if (_opts.gzip) return zlib.gzip(Buffer.from(txt), callback)
+        if (_opts.brotli) return brotli(Buffer.from(txt), callback)
+        else if (_opts.gzip) return zlib.gzip(Buffer.from(txt), callback)
 	      callback(null, Buffer.from(txt))
       }
     }

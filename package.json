@@ -1,6 +1,6 @@
 {
   "name": "ballify",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "bundles all front-end assets of a SPA into one html ball",
   "bin": {
     "ballify": "cli.js"
@@ -30,6 +30,7 @@
   "homepage": "https://github.com/chiefbiiko/ballify#readme",
   "dependencies": {
     "follow-redirects": "^1.2.6",
+    "iltorb": "^2.0.3",
     "minimist": "^1.2.0",
     "uglify-es": "^3.3.5",
     "url-regex": "^4.1.1"
