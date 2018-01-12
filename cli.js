@@ -20,14 +20,16 @@ var HELP =
   '\n  --base64Images\tconvert images to base64?' +
   '\n  --base64GoogleFonts\tconvert GFonts links to inline base64 fonts?' +
   '\n  --uglifyJS\t\tminify JS?' +
-  '\n  --crunchifyCSS\tminify CSS?' +
+  '\n  --minifyCSS\tminify CSS?' +
   '\n  --mergeCSS\t\tmerge recurring CSS selectors when minifying CSS?' +
   '\n  --crunchHTML\t\tremove unnecessary whitespace from HTML?' +
-  '\n  -o, --output\t\toutput filename, defaults to "ball.html.br"' +
-  '\n\n  All options but "--output" and "gzip" default to true.' +
+  '\n  -o, --output\t\toutput filename, default: "ball.html.br"' +
+  '\n  --live\t\tspin up a local dev server?' +
+  '\n  --port\t\tport for the local dev server, default: 419 ' +
+  '\n\n  All options but "output", "port", and "gzip" default to true.' +
   '\n  To set any of them do "--<option>=false|true" or ' +
        '"--<option> false|true"' +
-  '\n  Note that options brotli and gzip are mutually exclusive.' +
+  '\n  Note that options "brotli" and "gzip" are mutually exclusive.' +
   '\n\nMisc & Help:' +
   '\n  -h, --help\t\tprint this usage guide' +
   '\n  -v, --version\t\tprint the ballify version' +
@@ -35,7 +37,7 @@ var HELP =
 
 var miniopts = {
   string: [ 'o', 'output' ],
-  boolean: [ 'gzip', 'live', 'h', 'help', 'v', 'version' ],
+  boolean: [ 'gzip', 'h', 'help', 'v', 'version' ],
   number: [ 'port' ]
 }
 
@@ -53,7 +55,7 @@ var opts = {
   crunchifyCSS: argv.crunchifyCSS !== 'false',
   mergeCSS: argv.mergeCSS !== 'false',
   crunchHTML: argv.crunchHTML !== 'false',
-  live: argv.live,
+  live: argv.live !== 'false',
   port: argv.port || 419
 }
 

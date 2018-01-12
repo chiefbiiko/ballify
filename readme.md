@@ -8,7 +8,7 @@ Pack all frontend assets of a single page application into a single *ball*.
 
 `ballify` bundles all resources that are linked into a `HTML` file and concatenates them into one big *ball*, yet another `HTML` file (`brotli`-compressed by default). It packs scripts (empty ones with no innerText/code), stylesheets, images (`jpg`, `gif`, `png`, `svg`), and Google Fonts (loaded via a `link` element). Assets can be read from local or remote sources.
 
-`ballify` is designed to be used with single page aplications that require just a few frontend assets.
+`ballify` is designed to be used with single page aplications that do not require toooo many frontend assets.
 
 ***
 
@@ -20,7 +20,7 @@ For programmatic usage do:
 npm install --save-dev ballify
 ```
 
-Install it globally if you wish to use the command line interface.
+Install it globally if you are gonna use the command line interface:
 
 ```
 npm install --global ballify
@@ -32,13 +32,21 @@ npm install --global ballify
 
 ### CLI
 
+Simply bundle up all assets that are linked into `index.html` and write that to `ball.html.br`:
+
 ```
 ballify index.html -o ball.html.br
 ```
 
-Check out `ballify --help`.
+Ballify your single page app and spin up a local devserver @ `localhost:419`:
 
-### API
+```
+ballify index.html --live
+```
+
+You can set all options from the command line. Make sure 2 check out `ballify --help`.
+
+### `node`
 
 ``` js
 var ballify = require('ballify')
