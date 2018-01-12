@@ -1,6 +1,6 @@
 {
   "name": "ballify",
-  "version": "1.1.4",
+  "version": "1.1.5",
   "description": "bundles all front-end assets of a SPA into one html ball",
   "bin": {
     "ballify": "cli.js"

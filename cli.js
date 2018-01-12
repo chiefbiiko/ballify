@@ -27,12 +27,12 @@ var HELP =
        '"--<option> false|true"' +
   '\n  Note that options brotli and gzip are mutually exclusive.' +
   '\n\nMisc & Help:' +
-  '\n  -h, --help\t\tprint this usqage guide' +
+  '\n  -h, --help\t\tprint this usage guide' +
   '\n  -v, --version\t\tprint the ballify version' +
   '\n\nHave fun using ballify! Get involved @ github.com/chiefbiiko/ballify :)'
 
 var argv = minimist(process.argv.slice(2), { string: [ 'o', 'output' ] })
-if (argv.help || argv.h) return console.log(HELP)
+if (argv.h || argv.help) return console.log(HELP)
 if (argv.v || argv.version) return console.log(require('./package').version)
 
 var opts = {

@@ -33,7 +33,7 @@ npm install --global ballify
 ### CLI
 
 ```
-ballify index.html -o ball.html.gz
+ballify index.html -o ball.html.br
 ```
 
 Check out `ballify --help`.
