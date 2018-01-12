@@ -20,7 +20,7 @@ var HELP =
   '\n  --base64Images\tconvert images to base64?' +
   '\n  --base64GoogleFonts\tconvert GFonts links to inline base64 fonts?' +
   '\n  --uglifyJS\t\tminify JS?' +
-  '\n  --minifyCSS\tminify CSS?' +
+  '\n  --minifyCSS\t\tminify CSS?' +
   '\n  --mergeCSS\t\tmerge recurring CSS selectors when minifying CSS?' +
   '\n  --crunchHTML\t\tremove unnecessary whitespace from HTML?' +
   '\n  -o, --output\t\toutput filename, default: "ball.html.br"' +
