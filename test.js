@@ -261,3 +261,13 @@ tape('lossless brotli compression', function (t) {
     })
   })
 })
+
+tape('passing assets', function (t) {
+  var testfile = 'testfiles/index99.html'
+  ballify(testfile, function (err, ball, assets) {
+    if (err) t.end(err)
+    t.true(Array.isArray(assets), 'assets is an array')
+    t.true(assets.length > 0, 'non-empty array')
+    t.end()
+  })
+})
