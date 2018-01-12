@@ -214,14 +214,21 @@ function ballify (file, opts, callback) {
   fs.readFile(file, 'utf8', function (err, txt) {
     if (err) return callback(err)
 
+    var assets = []
+
+    function bounceDone (err, buf) {
+      if (err) return callback(err)
+      callback(null, buf, assets)
+    }
+
     function done (el, err, pac) {
       if (err) return callback(err)
       txt = txt.replace(el, pac)
       if (!--pending) {
         if (_opts.crunchHTML) txt = txt.replace(HTML_WHITESPACE, '><').trim()
-        if (_opts.brotli) return brotli(Buffer.from(txt), callback)
-        else if (_opts.gzip) return zlib.gzip(Buffer.from(txt), callback)
-	      callback(null, Buffer.from(txt))
+        if (_opts.brotli) return brotli(Buffer.from(txt), bounceDone)
+        else if (_opts.gzip) return zlib.gzip(Buffer.from(txt), bounceDone)
+	      callback(null, Buffer.from(txt), assets)
       }
     }
 
@@ -237,6 +244,7 @@ function ballify (file, opts, callback) {
     all.forEach(function (el) {
       var ogurl = extractUrl(el)
       var url = maybeAbs(ogurl, root)
+      assets.push(url)
       read(url, function (err, buf) {
         if (err) return callback(err)
         if (isScript(el) || isCSSLink(el)) {
