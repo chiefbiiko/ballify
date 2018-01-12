@@ -213,3 +213,17 @@ tape('disabling ballifying Google Fonts', function (t) {
     })
   })
 })
+
+tape('preserving inline img attributes', function (t) {
+  var testfile = 'testfiles/index13.html'
+  fs.readFile(testfile, function (err, buf) {
+    if (err) t.end(err)
+    t.true(/<img\sid="pic"/, 'img id there')
+    ballify(testfile, { gzip: false }, function (err, ball) {
+      if (err) t.end(err)
+      t.true(/data:image\/.+;base64,/.test(ball), 'img data uri there')
+      t.true(/<img\sid="pic"/.test(ball), 'img id there')
+      t.end()
+    })
+  })
+})

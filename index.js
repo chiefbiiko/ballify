@@ -1,5 +1,5 @@
 // TODO:
-//   + fix BUG: destroying original img element
+//   + ~fixd: destroying original img element~
 //   + allow brotli compression
 //   + ~also ballify google fonts that are loaded into the webpage!!!~
 //   + ~whatabout gif tiff bmp?!~
@@ -33,7 +33,6 @@ var DOT_CSS = RegExp('\\.css')
 var GFONT_APIS = RegExp('fonts\\.googleapis')
 var HREF = RegExp('^.+href=.([^\\s\'"]+).+$')
 var SRC = RegExp('^.+src=.([^\\s\'"]+).+$')
-var ALT_ATTR = RegExp('^.+alt=(?:"|\')([^"\']+)(?:"|\').+$')
 var URL__ = RegExp('url\\(')
 var ENDS_PUNCTUATION = RegExp('^[("\']|[)"\']$', 'g')
 var IMG_NAME_JS = RegExp(
@@ -104,10 +103,6 @@ function buf2Base64DataUri (buf, url) {
   return 'data:' + media + '/' + type + ';base64,' + buf.toString('base64')
 }
 
-function buf2Base64Img (buf, url, alt) {
-  return '<img src="' + buf2Base64DataUri(buf, url) + '" alt="' + alt + '">'
-}
-
 function getIt(mod, url, cb) {
   mod.get(url.startsWith('http') ? url : 'http://' + url, function (res) {
     var chunks = []
@@ -152,10 +147,6 @@ function extractUrl (el) {
   if (isCSSLink(el) || isGoogleFontLink(el)) return extractHref(el)
   else if (isImg(el) || isScript(el)) return extractSrc(el)
   else return try2extractSrc(el)
-}
-
-function extractAlt (img) {
-  return img.replace(ALT_ATTR, '$1')
 }
 
 function isImg (el) {
@@ -258,13 +249,14 @@ function ballify (file, opts, callback) {
     if (!pending) return callback(null, txt)
 
     all.forEach(function (el) {
-      var url = maybeAbs(extractUrl(el), root)
+      var ogurl = extractUrl(el)
+      var url = maybeAbs(ogurl, root)
       read(url, function (err, buf) {
         if (err) return callback(err)
         if (isScript(el) || isCSSLink(el)) {
           imgSrc2Base64ThenPac(buf, el, url, _opts, done.bind(null, el))
-        } else if (isImg(el)) { // BUG: DESTROYING ORIGINAL IMG ELEMENT!!!
-          done(el, null, buf2Base64Img(buf, url, extractAlt(el)))
+        } else if (isImg(el)) {
+          done(el, null, el.replace(ogurl, buf2Base64DataUri(buf, url)))
         } else if (isGoogleFontLink(el)) {
           getThenPacThatGoogleFont(buf, _opts, done.bind(null, el))
         }
