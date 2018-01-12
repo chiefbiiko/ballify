@@ -37,7 +37,7 @@ if (argv.v || argv.version) return console.log(require('./package').version)
 
 var opts = {
   brotli: argv.brotli !== 'false',
-  gzip: argv.gzip !== 'false',
+  gzip: argv.gzip,
   base64Images: argv.base64Images !== 'false',
   base64GoogleFonts: argv.base64GoogleFonts !== 'false',
   uglifyJS: argv.uglifyJS !== 'false',
@@ -54,10 +54,10 @@ else if (!outopt && opts.gzip) output = 'ball.html.gz'
 else if (!outopt) output = 'ball.html'
 else output = outopt
 
-ballify(input, opts, function (err, ball) {
+ballify(input, opts, function onBall (err, ball, assets) {
   if (err) return console.error(err)
   fs.writeFile(output, ball, function (err) {
     if (err) return console.error(err)
-    console.log('just got done ballifying ' + output + '...')
+    console.log('DONE ballifying %s!\nassets:\n%s', output, assets.join('\n'))
   })
 })
