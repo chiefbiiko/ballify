@@ -4,7 +4,9 @@
 //   + add a local dev server with watchify
 
 var fs = require('fs')
+var http = require('http')
 var minimist = require('minimist')
+var watch = require('recursive-watch')
 var ballify = require('./index')
 
 var HELP =
@@ -31,7 +33,14 @@ var HELP =
   '\n  -v, --version\t\tprint the ballify version' +
   '\n\nHave fun using ballify! Get involved @ github.com/chiefbiiko/ballify :)'
 
-var argv = minimist(process.argv.slice(2), { string: [ 'o', 'output' ] })
+var miniopts = {
+  string: [ 'o', 'output' ],
+  boolean: [ 'gzip', 'live', 'h', 'help', 'v', 'version' ],
+  number: [ 'port' ]
+}
+
+var argv = minimist(process.argv.slice(2), miniopts)
+
 if (argv.h || argv.help) return console.log(HELP)
 if (argv.v || argv.version) return console.log(require('./package').version)
 
@@ -43,7 +52,9 @@ var opts = {
   uglifyJS: argv.uglifyJS !== 'false',
   crunchifyCSS: argv.crunchifyCSS !== 'false',
   mergeCSS: argv.mergeCSS !== 'false',
-  crunchHTML: argv.crunchHTML !== 'false'
+  crunchHTML: argv.crunchHTML !== 'false',
+  live: argv.live,
+  port: argv.port || 419
 }
 
 var input = argv._[0]
@@ -54,10 +65,56 @@ else if (!outopt && opts.gzip) output = 'ball.html.gz'
 else if (!outopt) output = 'ball.html'
 else output = outopt
 
-ballify(input, opts, function onBall (err, ball, assets) {
+var watching = []
+var server
+var stash
+
+function watchNewAssets (oldAssets, assets, watchCallback) {
+   assets.filter(fs.existsSync).filter(function (localAsset) {
+     return !oldAssets.includes(localAsset)
+   }).forEach(function (newAsset) {
+     watching.push(newAsset)
+     watch(newAsset, watchCallback)
+   })
+}
+
+function onchange (file) {
+  console.log(file + ' changed...')
+  ballify(input, opts, onball)
+}
+
+function onconnection (req, res) {
+    res.writeHead(200, {
+      'content-type': 'text/html; charset="utf-8"',
+      'content-encoding': opts.brotli ? 'br' : opts.gzip ? 'gzip' : 'identity',
+      'transfer-encoding': 'chunked'
+    })
+    res.end(stash)
+}
+
+function onlisten () {
+  console.log('ballify devserver up  @ localhost:' + opts.port)
+}
+
+function onball (err, ball, assets) {
   if (err) return console.error(err)
+
+  if (opts.live) {
+    if (!server.listening) server.listen(opts.port, 'localhost', onlisten)
+    stash = ball
+    watchNewAssets(watching, assets, onchange)
+  }
+
   fs.writeFile(output, ball, function (err) {
     if (err) return console.error(err)
     console.log('DONE ballifying %s!\nassets:\n%s', output, assets.join('\n'))
   })
-})
+}
+
+if (opts.live) {
+  server = http.createServer(onconnection)
+  watching.push(input)
+  watch(input, onchange)
+}
+
+ballify(input, opts, onball)
