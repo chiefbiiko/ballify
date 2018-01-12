@@ -8,7 +8,7 @@ Pack all frontend assets of a single page app into a single **_ball_**.
 
 `ballify` bundles all assets that are linked into a `HTML` file and concatenates them into one big *ball*, yet another `HTML` file (`brotli`-compressed by default). It packs scripts (empty ones with no innerText/code), stylesheets, images (`jpg`, `gif`, `png`, `svg`), and Google Fonts (loaded via a `link` element). Assets can be read from local or remote sources.
 
-`ballify` is designed to be used with single page aplications that do not require toooo many frontend assets.
+`ballify` is designed to be used with single page apps that are built with ordinary web technologies and do not require toooo many frontend assets.
 
 ***
 
@@ -80,6 +80,8 @@ Ballify a `HTML` file. The callback has the signature `callback(err, ball)`, wit
 ```
 
 Note that `ballify` treats `opts.brotli` and `opts.gzip` as mutually exclusive, meaning you can either use one or the other but not both.
+
+If `opts.base64Images` is `true` image urls are converted to base64 data uris within `HTML`, `CSS`, and `JS` files. Google Fonts are only converted to inline fonts if they are loaded via an ordinary `link` element.
 
 ***
 

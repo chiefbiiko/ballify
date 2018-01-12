@@ -18,7 +18,7 @@ var HELP =
   '\n  --brotli\t\tcompress the ball with brotli? default: true' +
   '\n  --gzip\t\tgzip the ball? default: false' +
   '\n  --base64Images\tconvert images to base64?' +
-  '\n  --base64GoogleFonts\tconvert GFonts links to inline base64 fonts?' +
+  '\n  --base64GoogleFonts\tmake Google Fonts links inline base64 fonts?' +
   '\n  --uglifyJS\t\tminify JS?' +
   '\n  --minifyCSS\t\tminify CSS?' +
   '\n  --mergeCSS\t\tmerge recurring CSS selectors when minifying CSS?' +
