@@ -1,20 +1,3 @@
-// TODO:
-//   + ~fixd: destroying original img element~
-//   + ~allow brotli compression~
-//   + ~also ballify google fonts that are loaded into the webpage!!!~
-//   + ~whatabout gif tiff bmp?!~
-//   + ~implement opts - minification!!!~
-//   + ~separate api and cli~
-//   + ~consider svgs when looking for images~
-//   + ~ballify images inclluded in css! to base64~
-//   + ~check whether links without rel="stylesheet" are actually css~
-//   + ~print help on demand~
-//   + ~test GET~
-//   + ~implement GET against non-"https?" prefixed urls + test!~
-//   + ~ballify images: to base64? - ALSO WITHIN js !!!~
-//   + ~write a test that shows that only empty scripts are considered~
-//   + ~if input is not supplied look for index.html in cwd~
-
 var fs = require('fs')
 var path = require('path')
 var brotli = require('iltorb').compress

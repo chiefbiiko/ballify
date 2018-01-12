@@ -1,8 +1,6 @@
 #!/usr/bin/env node
 
 // TODO:
-//   + add -h --help itself to HELP
-//   + implement -v --version and add to HELP
 //   + add a local dev server with watchify
 
 var fs = require('fs')
@@ -15,8 +13,8 @@ var HELP =
   '\n  file:\t\t\tinput HTML file, defaults to "index.html"' +
   '\n  output:\t\toutput file, default: "ball.html.br"' +
   '\n\nOptions:' +
-  '\n  --brotli\t\tcompress the ball with brotli?' +
-  '\n  --gzip\t\tgzip the ball?' +
+  '\n  --brotli\t\tcompress the ball with brotli? default: true' +
+  '\n  --gzip\t\tgzip the ball? default: false' +
   '\n  --base64Images\tconvert images to base64?' +
   '\n  --base64GoogleFonts\tconvert GFonts links to inline base64 fonts?' +
   '\n  --uglifyJS\t\tminify JS?' +
@@ -24,12 +22,18 @@ var HELP =
   '\n  --mergeCSS\t\tmerge recurring CSS selectors when minifying CSS?' +
   '\n  --crunchHTML\t\tremove unnecessary whitespace from HTML?' +
   '\n  -o, --output\t\toutput filename, defaults to "ball.html.br"' +
-  '\n\n  All options but "--output" are boolean flags that default to true.' +
-  '\n  To disable any of them do "--<option>=false" or "--<option> false"' +
-  '\n  Note that options brotli and gzip are mutually exclusive.'
+  '\n\n  All options but "--output" and "gzip" default to true.' +
+  '\n  To set any of them do "--<option>=false|true" or ' +
+       '"--<option> false|true"' +
+  '\n  Note that options brotli and gzip are mutually exclusive.' +
+  '\n\nMisc & Help:' +
+  '\n  -h, --help\t\tprint this usqage guide' +
+  '\n  -v, --version\t\tprint the ballify version' +
+  '\n\nHave fun using ballify! Get involved @ github.com/chiefbiiko/ballify :)'
 
 var argv = minimist(process.argv.slice(2), { string: [ 'o', 'output' ] })
 if (argv.help || argv.h) return console.log(HELP)
+if (argv.v || argv.version) return console.log(require('./package').version)
 
 var opts = {
   brotli: argv.brotli !== 'false',
