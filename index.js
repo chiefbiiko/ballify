@@ -162,6 +162,7 @@ function imgSrc2Base64ThenPac (buf, el, origin, opts, cb) {
   if (isCSS) all = txt.match(IMG_SRCS_CSS) || []
   else all = (txt.match(IDL_SRCS) || []).concat(txt.match(SET_SRCS) || [])
   var pending = all.length
+  var subassets = []
 
   if (!opts.base64Images || !pending) {
     return cb(null, isCSS ? pacCSS(txt, opts) : pacJS(txt, opts))
@@ -170,10 +171,13 @@ function imgSrc2Base64ThenPac (buf, el, origin, opts, cb) {
   all.forEach(function (stmt) {
     var src = extractUrl(stmt)
     var url = maybeAbs(src, path.dirname(origin))
+    subassets.push(url)
     read(url, function (err, imgbuf) {
       if (err) return cb(err)
       txt = txt.replace(src, buf2Base64DataUri(imgbuf, url))
-      if (!--pending) cb(null, isCSS ? pacCSS(txt, opts) : pacJS(txt, opts))
+      if (!--pending) {
+        cb(null, isCSS ? pacCSS(txt, opts) : pacJS(txt, opts), subassets)
+      }
     })
   })
 
@@ -218,17 +222,18 @@ function ballify (file, opts, callback) {
 
     function bounceDone (err, buf) {
       if (err) return callback(err)
-      callback(null, buf, assets)
+      callback(null, buf, Array.from(new Set(assets)))
     }
 
-    function done (el, err, pac) {
+    function done (el, err, pac, subassets) {
       if (err) return callback(err)
+      if (subassets) assets = assets.concat(subassets)
       txt = txt.replace(el, pac)
       if (!--pending) {
         if (_opts.crunchHTML) txt = txt.replace(HTML_WHITESPACE, '><').trim()
         if (_opts.brotli) return brotli(Buffer.from(txt), bounceDone)
         else if (_opts.gzip) return zlib.gzip(Buffer.from(txt), bounceDone)
-	      callback(null, Buffer.from(txt), assets)
+	      callback(null, Buffer.from(txt), Array.from(new Set(assets)))
       }
     }
 
