@@ -26,7 +26,8 @@ var HELP =
   '\n  -o, --output\t\toutput filename, default: "ball.html.br"' +
   '\n  --live\t\tspin up a local dev server?' +
   '\n  --port\t\tport for the local dev server, default: 419 ' +
-  '\n\n  All options but "output", "port", and "gzip" default to true.' +
+  '\n\n  All options but "output", "port", "gzip", and "live" ' +
+       'default to true.' +
   '\n  To set any of them do "--<option>=false|true" or ' +
        '"--<option> false|true"' +
   '\n  Note that options "brotli" and "gzip" are mutually exclusive.' +
@@ -37,7 +38,7 @@ var HELP =
 
 var miniopts = {
   string: [ 'o', 'output' ],
-  boolean: [ 'gzip', 'h', 'help', 'v', 'version' ],
+  boolean: [ 'gzip', 'h', 'help', 'v', 'version', 'live' ],
   number: [ 'port' ]
 }
 
@@ -55,7 +56,7 @@ var opts = {
   crunchifyCSS: argv.crunchifyCSS !== 'false',
   mergeCSS: argv.mergeCSS !== 'false',
   crunchHTML: argv.crunchHTML !== 'false',
-  live: argv.live !== 'false',
+  live: argv.live,
   port: argv.port || 419
 }
 
