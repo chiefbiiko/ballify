@@ -213,7 +213,7 @@ function ballify (file, opts, callback) {
     ? opts.base64GoogleFonts : true
 
   file = path.join(file || 'index.html')
-  var root = path.dirname(path.join(__dirname, file))
+  var root = path.dirname(path.join(process.cwd(), file))
 
   fs.readFile(file, 'utf8', function (err, txt) {
     if (err) return callback(err)
@@ -233,7 +233,7 @@ function ballify (file, opts, callback) {
         if (_opts.crunchHTML) txt = txt.replace(HTML_WHITESPACE, '><').trim()
         if (_opts.brotli) return brotli(Buffer.from(txt), bounceDone)
         else if (_opts.gzip) return zlib.gzip(Buffer.from(txt), bounceDone)
-	      callback(null, Buffer.from(txt), Array.from(new Set(assets)))
+	callback(null, Buffer.from(txt), Array.from(new Set(assets)))
       }
     }
 
