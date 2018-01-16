@@ -2,7 +2,6 @@
 
 // TODO:
 //   + http2 devserver that pushes onchange of any assets
-//   + fix balou's bug!!!
 
 var fs = require('fs')
 var http = require('http')
